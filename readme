@@ -1,1 +1,16 @@
-.
+-------------
+---Shannon---
+-------------
+
+Shannon is a pet project to encode plain-text messages into -
+ and decode them from - audio files.
+
+--Usage--
+Compile shannon.c and link all other c files.
+The UI should take care of it from there; no arguments required.
+
+--Error codes--
+1: Aborted by user; failed to prevent memory leaks.
+2: Failed to read the current working directory.
+3: Failed to open a resource directory.
+4: Failed to open a selected resource file.
