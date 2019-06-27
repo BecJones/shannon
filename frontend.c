@@ -18,6 +18,7 @@ int mainMenu(int argc, char** argv) {
 		}
 		if(res == 1) {
 			res = 0;
+			scanned = 0;
 		}
 		if(res) {
 			printf("\nExit %d FAILURE\n\n", res);
