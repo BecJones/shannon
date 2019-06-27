@@ -5,7 +5,7 @@ int mainMenu(int argc, char** argv) {
 	int res;
 	int scanned = -1;
 
-	printf("\n\n***\nCRYPTOR\n*****\n");
+	printf("\n\n***\nSHANNON\n*****\n");
 
 	while(scanned) {
 		printf("\n[1]\tEncode\n[2]\tDecode\n[0]\tQuit\n\n");
