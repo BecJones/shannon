@@ -7,10 +7,14 @@ Shannon is a pet project to encode plain-text messages into -
 
 --Usage--
 Compile shannon.c and link all other c files.
-The UI should take care of it from there; no arguments required.
+Ensure that executable directory contains directories "noise", "signal", and "inbox".
+Place an audio file in "noise" and a plain text file in "signal" to encode.
+Place an audio file with an encoded message in "inbox" to decode.
+No command line arguments required.
 
 --Error codes--
-1: Aborted by user; failed to prevent memory leaks.
+1: Aborted by user; exited to prevent memory leaks.
 2: Failed to read the current working directory.
 3: Failed to open a resource directory.
-4: Failed to open a selected resource file.
+4: No files in resource directory.
+5: Failed to open a selected resource file.

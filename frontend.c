@@ -83,6 +83,7 @@ int fileBrowse(char* fdir, FILE** file) {
 	char* path = malloc(PATH_MAX);
 	int i;
 	int numents;
+	struct stat dirtest = {0};
 
 	// Allocate memory for directory entries
 	char** entries = malloc(64 * sizeof(*entries));
@@ -99,6 +100,11 @@ int fileBrowse(char* fdir, FILE** file) {
 	strcat(path, "/");
 	strcat(path, fdir);
 	strcat(path, "/");
+
+	if(stat(path, &dirtest) == -1) {
+		mkdir(path, 0777);
+	}
+
 	printf("\nLoading Directory:\n%s\n", path);
 	printf("Choose file:\n");
 
@@ -113,6 +119,9 @@ int fileBrowse(char* fdir, FILE** file) {
 			strcpy(entries[i], ent->d_name);
 			i = i + 1;
 		}
+	}
+	if(!i) {
+		return 4;
 	}
 	numents = i;
 
@@ -138,7 +147,7 @@ int fileBrowse(char* fdir, FILE** file) {
 
 	// Actually open the file
 	if(!(tFile = fopen(path, "r"))) {
-		return 4;
+		return 5;
 	}
 
 
