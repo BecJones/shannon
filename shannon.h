@@ -9,16 +9,10 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "encryption.h"
 #include "frontend.h"
 
 // Main
 int main(int argc, char** argv);
-
-// Data string
-// Similar to a rudimentary string, but designed to carry arbitrary byte data
-struct dataString {
-	int size;
-	char* data;
-};
 
 #endif

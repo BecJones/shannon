@@ -45,7 +45,9 @@ int encMenu() {
 		return res;
 	}
 
-	// Send the files to the backend
+	if((res = encode(files))) {
+		return res;
+	}
 
 	fclose(files[0]);
 	fclose(files[1]);
