@@ -16,10 +16,6 @@ int mainMenu(int argc, char** argv) {
 		} else if(scanned == 2) {
 			res = decMenu();
 		}
-		if(res == 1) {
-			res = 0;
-			scanned = 0;
-		}
 		if(res) {
 			printf("\nExit %d FAILURE\n\n", res);
 			return res;
@@ -36,22 +32,24 @@ int encMenu() {
 	printf("\n\n***\nENCODE\n*****\n");
 
 	int res;
-
 	FILE** files = malloc(2 * sizeof(*files));
-	if((res = fileBrowse(SIGNADIR, &(files[0])))) {
+	unsigned long* filesizes = malloc(2 * sizeof(*filesizes));
+
+	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0])))) {
 		return res;
 	}
-	if((res = fileBrowse(NOISEDIR, &(files[1])))) {
+	if((res = fileBrowse(NOISEDIR, &(files[1]), &(filesizes[1])))) {
 		return res;
 	}
 
-	if((res = encode(files))) {
+	if((res = encode(files, filesizes))) {
 		return res;
 	}
 
 	fclose(files[0]);
 	fclose(files[1]);
 	free(files);
+	free(filesizes);
 	
 	return 0;
 }
@@ -61,25 +59,27 @@ int decMenu() {
 	printf("\n\n***\nDECODE\n*****\n");
 
 	int res;
+	FILE* file;
+	unsigned long filesize;
 
-	FILE* files;
-	if((res = fileBrowse(INBOXDIR, &files))) {
+	if((res = fileBrowse(INBOXDIR, &file, &filesize))) {
 		return res;
 	}
 
 	// Send the files to the backend
 
-	fclose(files);
+	fclose(file);
 
 	return 0;
 }
 
 // File browser
-int fileBrowse(char* fdir, FILE** file) {
+int fileBrowse(char* fdir, FILE** file, unsigned long* filesize) {
 
 	// Variable declarations
 	int scanned = -2;
 	FILE* tFile;
+	unsigned long tSize;
 	DIR* dir;
 	struct dirent* ent;
 	char* path = malloc(PATH_MAX);
@@ -147,6 +147,12 @@ int fileBrowse(char* fdir, FILE** file) {
 
 	printf("\nFile selected:\n%s\n", path);
 
+	if(stat(path, &dirtest) == -1) {
+		return 5;
+	}
+
+	tSize = dirtest.st_size;
+
 	// Actually open the file
 	if(!(tFile = fopen(path, "r"))) {
 		return 5;
@@ -162,6 +168,7 @@ int fileBrowse(char* fdir, FILE** file) {
 	free(path);
 
 	*file = tFile;
+	*filesize = tSize;
 
 	return 0;
 }

@@ -17,4 +17,5 @@ No command line arguments required.
 2: Failed to read the current working directory.
 3: Failed to open a resource directory.
 4: No files in resource directory.
-5: Failed to open a selected resource file.
+5: Failed to open a selected resource file
+6: Noise file too small to contain entire signal file..

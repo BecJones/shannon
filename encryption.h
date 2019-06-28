@@ -2,11 +2,11 @@
 #define _encryption_h_
 
 // Encode transmission
-int encode(FILE** files);
+int encode(FILE** files, unsigned long* filesizes);
 
 // Data string
 struct dataString {
-	int size;
+	unsigned long size;
 	char* data;
 };
 
