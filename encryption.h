@@ -7,7 +7,7 @@ int encode(FILE** files, unsigned long* filesizes);
 // Data string
 struct dataString {
 	unsigned long size;
-	char* data;
+	unsigned char* data;
 };
 
 #endif
