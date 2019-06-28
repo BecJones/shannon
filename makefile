@@ -4,5 +4,5 @@ build: shannon.c shannon.h frontend.c frontend.h encryption.c encryption.h
 debug: shannon.c shannon.h frontend.c frontend.h encryption.c encryption.h
 	gcc -o shannon -Wall shannon.c frontend.c encryption.c
 
-clean: shannon
-	rm shannon
+clean:
+	rm shannon signal/* noise/* inbox/*
