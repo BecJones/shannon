@@ -117,7 +117,7 @@ int fileBrowse(char* fdir, FILE** file, unsigned long* filesize) {
 	
 	i = 0;
 	while((ent = readdir(dir))) {
-		if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+		if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..") && ent->d_name[0] != '.') {
 			strcpy(entries[i], ent->d_name);
 			i = i + 1;
 		}
