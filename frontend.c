@@ -34,20 +34,31 @@ int encMenu() {
 	int res;
 	FILE** files = malloc(2 * sizeof(*files));
 	uint64_t* filesizes = malloc(2 * sizeof(*filesizes));
+	char fname[PATH_MAX];
+	struct dataString outfile;
+	FILE* output;
 
-	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0])))) {
+	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0]), fname))) {
 		return res;
 	}
-	if((res = fileBrowse(NOISEDIR, &(files[1]), &(filesizes[1])))) {
+	if((res = fileBrowse(NOISEDIR, &(files[1]), &(filesizes[1]), fname))) {
 		return res;
 	}
 
-	if((res = encode(files, filesizes))) {
+	if((res = encode(files, filesizes, &outfile))) {
 		return res;
 	}
 
+	if(!(output = fopen(fname, "w"))) {
+		return 6;
+	}
+	fwrite(outfile.data, sizeof(*(outfile.data)), outfile.size, output);
+
+
+	fclose(output);
 	fclose(files[0]);
 	fclose(files[1]);
+	free(outfile.data);
 	free(files);
 	free(filesizes);
 	
@@ -61,8 +72,11 @@ int decMenu() {
 	int res;
 	FILE* file;
 	uint64_t filesize;
+	char fname[PATH_MAX];
+	struct dataString outfile;
+	FILE* output;
 
-	if((res = fileBrowse(INBOXDIR, &file, &filesize))) {
+	if((res = fileBrowse(INBOXDIR, &file, &filesize, fname))) {
 		return res;
 	}
 
@@ -74,7 +88,7 @@ int decMenu() {
 }
 
 // File browser
-int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
+int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname) {
 
 	// Variable declarations
 	int scanned = -2;
@@ -97,11 +111,16 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
 	if(!getcwd(path, PATH_MAX)) {
 		return 2;
 	}
+	strcpy(fname, path);
 
 	// Construct complete directory path
 	strcat(path, "/");
 	strcat(path, fdir);
 	strcat(path, "/");
+
+	strcat(fname, "/");
+	strcat(fname, OUTBODIR);
+	strcat(fname, "/");
 
 	if(stat(path, &dirtest) == -1) {
 		mkdir(path, 0777);
@@ -123,7 +142,7 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
 		}
 	}
 	if(!i) {
-		return 4;
+		return 3;
 	}
 	numents = i;
 
@@ -140,6 +159,7 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
 		}
 		scanned = scanned - 1;
 		if(scanned > -1 && scanned < numents) {
+			strcat(fname, entries[scanned]);
 			strcat(path, entries[scanned]);
 			scanned = -1;
 		}
@@ -148,14 +168,14 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
 	printf("\nFile selected:\n%s\n", path);
 
 	if(stat(path, &dirtest) == -1) {
-		return 5;
+		return 4;
 	}
 
 	tSize = dirtest.st_size;
 
 	// Actually open the file
 	if(!(tFile = fopen(path, "r"))) {
-		return 5;
+		return 4;
 	}
 
 

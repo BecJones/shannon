@@ -15,7 +15,7 @@ No command line arguments required.
 --Error codes--
 1: Aborted by user; exited to prevent memory leaks.
 2: Failed to read the current working directory.
-3: Failed to open a resource directory.
-4: No files in resource directory.
-5: Failed to open a selected resource file
-6: Noise file too small to contain entire signal file..
+3: Empty resource directory.
+4: Failed to open selected resource file.
+5: Noise file too small to contain signal file.
+6: Failed to open output file.

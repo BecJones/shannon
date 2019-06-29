@@ -4,7 +4,7 @@
 #define KEY_0_LENGTH 5
 #define KEY_1_LENGTH 11
 #define KEY_2_LENGTH 12
-#define SIG_OFFSET 113
+#define MAX_OFFSET 413
 #define HEADER_LENGTH 5
 
 // Data string
@@ -14,7 +14,7 @@ struct dataString {
 };
 
 // Encode transmission
-int encode(FILE** files, uint64_t* filesizes);
+int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile);
 
 // Initialize keys
 int initKeys(struct dataString* sigcomp);
@@ -24,5 +24,8 @@ int applyKeys(struct dataString* sigcomp);
 
 // Build final signal
 int buildFinalSignal(struct dataString* finalsig, struct dataString* sigcomp);
+
+// Hide signal in noise
+int insertSignal(struct dataString* output, struct dataString* signal, struct dataString* noise, unsigned char* header);
 
 #endif

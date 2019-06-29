@@ -1,7 +1,7 @@
 #include "shannon.h"
 
 // Encode transmission
-int encode(FILE** files, uint64_t* filesizes) {
+int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
 	// Initialize variables
 	int res;
 	uint64_t i;
@@ -21,10 +21,10 @@ int encode(FILE** files, uint64_t* filesizes) {
 	data[1].data = malloc(data[1].size * sizeof(*(data[1].data)));
 
 	// Ensure that noise file is large enough to contain signal file contents
-	if(data[1].size / 8 < data[0].size +
+	if((data[1].size - MAX_OFFSET) / 8 < data[0].size +
 			KEY_0_LENGTH + KEY_1_LENGTH + KEY_2_LENGTH +
-			HEADER_LENGTH + sizeof(data[0].size) + SIG_OFFSET) {
-		return 6;
+			HEADER_LENGTH + sizeof(data[0].size)) {
+		return 5;
 	}
 
 	// Read files
@@ -67,6 +67,15 @@ int encode(FILE** files, uint64_t* filesizes) {
 
 	// Concatenate final signal
 	if((res = buildFinalSignal(&finalsig, sigcomp))) {
+		return res;
+	}
+
+	// Prepare output struct
+	outfile->size = data[1].size;
+	outfile->data = malloc(outfile->size);
+
+	// Hide signal in noise
+	if((res = insertSignal(outfile, &finalsig, &(data[1]), sigcomp[4].data))) {
 		return res;
 	}
 
@@ -138,6 +147,58 @@ int buildFinalSignal(struct dataString* finalsig, struct dataString* sigcomp) {
 	for(i = 0; i < 6; i = i + 1) {
 		strcat(finalsig->data, sigcomp[i].data);
 	}
+
+	return 0;
+}
+
+// Hide signal in noise
+int insertSignal(struct dataString* output, struct dataString* signal, struct dataString* noise, unsigned char* header) {
+	int offset;
+	uint64_t bytenum;
+	int bitnum;
+	uint64_t i;
+	unsigned char* headercheck;
+	unsigned char currentbit;
+
+	offset = (rand() % 300) + 113;
+	
+	// Ensure that the header sequence doesn't appear by chance before the signal
+	headercheck = malloc(offset / 8);
+	bytenum = 0;
+	headercheck[0] = 0x00;
+	for(i = 0; i < (offset / 8) * 8; i = i + 1) {
+		headercheck[bytenum] = headercheck[bytenum] |
+			(noise->data[i] & 0x01);
+		headercheck[bytenum] = headercheck[bytenum] << 1;
+		if(i % 8 == 7) {
+			if(bytenum > 3) {
+				if(headercheck[bytenum - 4] == header[0] &&
+						headercheck[bytenum - 3] == header[1] &&
+						headercheck[bytenum - 2] == header[2] &&
+						headercheck[bytenum - 1] == header[3] &&
+						headercheck[bytenum] == header[4]) {
+					noise->data[i] = noise->data[i] ^ 0x01;
+				}
+			}
+			bytenum = bytenum + 1;
+			headercheck[bytenum] = 0x00;
+		}
+	}
+
+	// Hide the signal
+	bytenum = 0;
+	bitnum = 0;
+	for(i = offset; i < offset + signal->size; i = i + 1) {
+		noise->data[i] = (noise->data[i] & 0xFE) | ((signal->data[bytenum] >> bitnum) & 0x01);
+		bitnum = bitnum + 1;
+		if(bitnum >= 7) {
+			bitnum = 0;
+			bytenum = bytenum + 1;
+		}
+	}
+
+	// Cleanup
+	free(headercheck);
 
 	return 0;
 }
