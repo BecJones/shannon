@@ -7,16 +7,22 @@
 #define SIG_OFFSET 113
 #define HEADER_LENGTH 5
 
-// Encode transmission
-int encode(FILE** files, uint64_t* filesizes);
-
-// Initialize keys
-int initKey(unsigned char** key);
-
 // Data string
 struct dataString {
 	uint64_t size;
 	unsigned char* data;
 };
+
+// Encode transmission
+int encode(FILE** files, uint64_t* filesizes);
+
+// Initialize keys
+int initKeys(struct dataString* sigcomp);
+
+// Apply keys to raw signal
+int applyKeys(struct dataString* sigcomp);
+
+// Build final signal
+int buildFinalSignal(struct dataString* finalsig, struct dataString* sigcomp);
 
 #endif

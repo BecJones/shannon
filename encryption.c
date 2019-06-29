@@ -4,8 +4,15 @@
 int encode(FILE** files, uint64_t* filesizes) {
 	// Initialize variables
 	int res;
+	uint64_t i;
+	uint64_t j;
 	unsigned char** key = malloc(3 * sizeof(*key));
+	unsigned char* header = malloc(HEADER_LENGTH * sizeof(*header));
+	unsigned char* sigsize;
+
 	struct dataString* data = malloc(2 * sizeof(*data));
+	struct dataString finalsig;
+	struct dataString* sigcomp = malloc(6 * sizeof(*sigcomp));
 
 	// Allocate memory for file contents
 	data[0].size = filesizes[0];
@@ -26,76 +33,110 @@ int encode(FILE** files, uint64_t* filesizes) {
 
 	printf("\nSignal size: %lu\nNoise size: %lu\n",
 			data[0].size, data[1].size);
-	
-	// Allocate memory for keys
-	key[0] = malloc(KEY_0_LENGTH * sizeof(*(key[0])));
-	key[1] = malloc(KEY_1_LENGTH * sizeof(*(key[1])));
-	key[2] = malloc(KEY_2_LENGTH * sizeof(*(key[2])));
 
-	//Generate keys
-	if((res = initKey(key))) {
+	// Initialize sizes for all final signal components
+	sigcomp[0].size = KEY_0_LENGTH;
+	sigcomp[1].size = KEY_1_LENGTH;
+	sigcomp[2].size = KEY_2_LENGTH;
+	sigcomp[3].size = sizeof(data[0].size);
+	sigcomp[4].size = HEADER_LENGTH;
+	sigcomp[5].size = data[0].size;
+
+	//Generate keys (signal components 0-2)
+	if((res = initKeys(sigcomp))) {
+		return res;
+	}
+
+	// Allocate/assign message size string
+	for(i = 0; i < sigcomp[3].size; i = i + 1) {
+		sigsize[i] = (data[0].size >> i) & 0xFF;
+	}
+
+	// Generate header
+	for(i = 0; i < sigcomp[4].size; i = i + 1) {
+		sigcomp[4].data[i] = 0xFF - i;
+	}
+
+	// Copy raw signal to signal component
+	strcpy(sigcomp[5].data, data[0].data);
+
+	// Encode raw signal with keys
+	if((res = applyKeys(sigcomp))) {
+		return res;
+	}
+
+	// Concatenate final signal
+	if((res = buildFinalSignal(&finalsig, sigcomp))) {
 		return res;
 	}
 
 	// Cleanup
-	free(key[0]);
-	free(key[1]);
-	free(key[2]);
-	free(key);
+	for(i = 0; i < 6; i = i + 1) {
+		free(sigcomp[i].data);
+	}
+	free(sigcomp);
 	free(data[0].data);
 	free(data[1].data);
 	free(data);
+	free(finalsig.data);
 
 	return 0;
 }
 
 // Initialize keys
-int initKey(unsigned char** key) {
+int initKeys(struct dataString* sigcomp) {
 	// Initialize variables
+	int keynum;
 	int i;
-	int j;
+	int shiftnum;
 	unsigned int tRand;
 
 	// Seed random number generation
 	srand(time(0));
 
-	// Key 0
-	tRand = rand();
-	j = 0;
-	for(i = 0; i < KEY_0_LENGTH; i = i + 1) {
-		key[0][i] = tRand & 0xFF;
-		tRand = tRand >> 8;
-		j = j + 1;
-		if(j == sizeof(tRand)) {
-			tRand = rand();
-			j = 0;
+	// Generate keys
+	for(keynum = 0; keynum < 3; keynum = keynum + 1) {
+		tRand = rand();
+		shiftnum = 0;
+		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
+			sigcomp[keynum].data[i] = tRand & 0xFF;
+			shiftnum = shiftnum + 1;
+			if(shiftnum >= sizeof(tRand)) {
+				tRand = rand();
+				shiftnum = 0;
+			}
 		}
 	}
 
-	// Key 1
-	tRand = rand();
-	j = 0;
-	for(i = 0; i < KEY_1_LENGTH; i = i + 1) {
-		key[1][i] = tRand & 0xFF;
-		tRand = tRand >> 8;
-		j = j + 1;
-		if(j == sizeof(tRand)) {
-			tRand = rand();
-			j = 0;
+	return 0;
+}
+
+// Apply keys to raw signal
+int applyKeys(struct dataString* sigcomp) {
+	uint64_t i;
+	int j;
+
+	for(i = 0; i < sigcomp[5].size; i = i + 1) {
+		for(j = 0; j < 3; j = j + 1) {
+			sigcomp[5].data[i] = sigcomp[5].data[i] ^ sigcomp[j].data[i % sigcomp[j].size];
 		}
 	}
 
-	// Key 2
-	tRand = rand();
-	j = 0;
-	for(i = 0; i < KEY_0_LENGTH; i = i + 1) {
-		key[2][i] = tRand & 0xFF;
-		tRand = tRand >> 8;
-		j = j + 1;
-		if(j == sizeof(tRand)) {
-			tRand = rand();
-			j = 0;
-		}
+	return 0;
+}
+
+// Build final signal
+int buildFinalSignal(struct dataString* finalsig, struct dataString* sigcomp) {
+	int i;
+	uint64_t size = 0;
+
+	for(i = 0; i < 6; i = i + 1) {
+		size = size + sigcomp[i].size;
+	}
+	finalsig->size = size;
+	finalsig->data = malloc(size);
+	for(i = 0; i < 6; i = i + 1) {
+		strcat(finalsig->data, sigcomp[i].data);
 	}
 
 	return 0;
