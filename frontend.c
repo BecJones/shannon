@@ -33,7 +33,7 @@ int encMenu() {
 
 	int res;
 	FILE** files = malloc(2 * sizeof(*files));
-	unsigned long* filesizes = malloc(2 * sizeof(*filesizes));
+	uint64_t* filesizes = malloc(2 * sizeof(*filesizes));
 
 	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0])))) {
 		return res;
@@ -60,7 +60,7 @@ int decMenu() {
 
 	int res;
 	FILE* file;
-	unsigned long filesize;
+	uint64_t filesize;
 
 	if((res = fileBrowse(INBOXDIR, &file, &filesize))) {
 		return res;
@@ -74,12 +74,12 @@ int decMenu() {
 }
 
 // File browser
-int fileBrowse(char* fdir, FILE** file, unsigned long* filesize) {
+int fileBrowse(char* fdir, FILE** file, uint64_t* filesize) {
 
 	// Variable declarations
 	int scanned = -2;
 	FILE* tFile;
-	unsigned long tSize;
+	uint64_t tSize;
 	DIR* dir;
 	struct dirent* ent;
 	char* path = malloc(PATH_MAX);

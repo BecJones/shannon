@@ -1,7 +1,7 @@
 #include "shannon.h"
 
 // Encode transmission
-int encode(FILE** files, unsigned long* filesizes) {
+int encode(FILE** files, uint64_t* filesizes) {
 	// Initialize variables
 	int res;
 	unsigned char** key = malloc(3 * sizeof(*key));

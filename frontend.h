@@ -16,6 +16,6 @@ int encMenu();
 int decMenu();
 
 // File browser
-int fileBrowse(char* fdir, FILE** files, unsigned long* filesize);
+int fileBrowse(char* fdir, FILE** files, uint64_t* filesize);
 
 #endif

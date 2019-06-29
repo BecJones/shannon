@@ -8,14 +8,14 @@
 #define HEADER_LENGTH 5
 
 // Encode transmission
-int encode(FILE** files, unsigned long* filesizes);
+int encode(FILE** files, uint64_t* filesizes);
 
 // Initialize keys
 int initKey(unsigned char** key);
 
 // Data string
 struct dataString {
-	unsigned long size;
+	uint64_t size;
 	unsigned char* data;
 };
 
