@@ -15,7 +15,13 @@ int encMenu();
 // Decode menu
 int decMenu();
 
+// Construct path
+int constructPath(char* fdir, char* path);
+
 // File browser
 int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname);
+
+// Export file
+int exportFile(char* path, struct dataString output);
 
 #endif
