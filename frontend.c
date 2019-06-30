@@ -144,18 +144,14 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname) {
 	}
 
 	// Ensure that directory exists
-	if(stat(path, &dirtest) == -1) {
-		mkdir(path, 0777);
-	}
-
-	printf("\nLoading Directory:\n%s\n", path);
-	printf("Choose file:\n");
-
-	// List files in directory
 	if(!(dir = opendir(path))) {
 		return 3;
 	}
+
+	// List files in directory
 	
+	printf("\nLoading Directory:\n%s\n", path);
+	printf("Choose file:\n");
 	i = 0;
 	while((ent = readdir(dir))) {
 		if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..") && ent->d_name[0] != '.') {
