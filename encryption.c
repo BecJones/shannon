@@ -38,26 +38,31 @@ int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
 	sigcomp[0].size = KEY_0_LENGTH;
 	sigcomp[1].size = KEY_1_LENGTH;
 	sigcomp[2].size = KEY_2_LENGTH;
-	sigcomp[3].size = sizeof(data[0].size);
-	sigcomp[4].size = HEADER_LENGTH;
+	sigcomp[3].size = HEADER_LENGTH;
+	sigcomp[4].size = sizeof(data[0].size);
 	sigcomp[5].size = data[0].size;
 
-	//Generate keys (signal components 0-2)
+	// Allocate all final signal components' data storage
+	for(i = 0; i < 6; i = i + 1) {
+		sigcomp[i].data = malloc(sigcomp[i].size);
+	}
+
+	// Generate header (final signal component 3)
+	for(i = 0; i < sigcomp[3].size; i = i + 1) {
+		sigcomp[4].data[i] = 0xFF - i;
+	}
+
+	// Assign signal size string (final signal component 4)
+	for(i = 0; i < sigcomp[4].size; i = i + 1) {
+		sigsize[i] = (data[0].size >> i) & 0xFF;
+	}
+
+	//Generate keys (final signal components 0, 1, and 2)
 	if((res = initKeys(sigcomp))) {
 		return res;
 	}
 
-	// Allocate/assign message size string
-	for(i = 0; i < sigcomp[3].size; i = i + 1) {
-		sigsize[i] = (data[0].size >> i) & 0xFF;
-	}
-
-	// Generate header
-	for(i = 0; i < sigcomp[4].size; i = i + 1) {
-		sigcomp[4].data[i] = 0xFF - i;
-	}
-
-	// Copy raw signal to signal component
+	// Copy raw signal (final signal component 5)
 	strcpy(sigcomp[5].data, data[0].data);
 
 	// Encode raw signal with keys
@@ -97,8 +102,10 @@ int initKeys(struct dataString* sigcomp) {
 	// Initialize variables
 	int keynum;
 	int i;
+	int j;
 	int shiftnum;
 	unsigned int tRand;
+	unsigned char headercheck[HEADER_LENGTH];
 
 	// Seed random number generation
 	srand(time(0));
@@ -108,11 +115,25 @@ int initKeys(struct dataString* sigcomp) {
 		tRand = rand();
 		shiftnum = 0;
 		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
-			sigcomp[keynum].data[i] = tRand & 0xFF;
+			sigcomp[keynum].data[i] = (tRand >> shiftnum) & 0xFF;
 			shiftnum = shiftnum + 1;
 			if(shiftnum >= sizeof(tRand)) {
 				tRand = rand();
 				shiftnum = 0;
+			}
+		}
+	}
+
+
+	// Ensure that no keys include header sequence
+	for(keynum = 0; keynum < 3; keynum = keynum + 1) {
+		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
+			headercheck[HEADER_LENGTH - 1] = sigcomp[keynum].data[i];
+			if(!strcmp(headercheck, sigcomp[4].data)) {
+				sigcomp[keynum].data[i] = sigcomp[keynum].data[i] ^ 0x10;
+			}
+			for(j = 0; j < HEADER_LENGTH - 1; j = j + 1) {
+				headercheck[j] = headercheck[j + 1];
 			}
 		}
 	}
@@ -125,6 +146,7 @@ int applyKeys(struct dataString* sigcomp) {
 	uint64_t i;
 	int j;
 
+	// Generate keys
 	for(i = 0; i < sigcomp[5].size; i = i + 1) {
 		for(j = 0; j < 3; j = j + 1) {
 			sigcomp[5].data[i] = sigcomp[5].data[i] ^ sigcomp[j].data[i % sigcomp[j].size];
@@ -177,7 +199,7 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 						headercheck[bytenum - 2] == header[2] &&
 						headercheck[bytenum - 1] == header[3] &&
 						headercheck[bytenum] == header[4]) {
-					noise->data[i] = noise->data[i] ^ 0x01;
+					noise->data[i] = noise->data[i] ^ 0x10;
 				}
 			}
 			bytenum = bytenum + 1;
