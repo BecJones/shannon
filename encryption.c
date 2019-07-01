@@ -130,7 +130,7 @@ int initKeys(struct dataString* sigcomp) {
 		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
 			headercheck[HEADER_LENGTH - 1] = sigcomp[keynum].data[i];
 			if(!strcmp(headercheck, sigcomp[4].data)) {
-				sigcomp[keynum].data[i] = sigcomp[keynum].data[i] ^ 0x10;
+				sigcomp[keynum].data[i] = sigcomp[keynum].data[i] ^ 0x01;
 			}
 			for(j = 0; j < HEADER_LENGTH - 1; j = j + 1) {
 				headercheck[j] = headercheck[j + 1];
@@ -199,7 +199,7 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 						headercheck[bytenum - 2] == header[2] &&
 						headercheck[bytenum - 1] == header[3] &&
 						headercheck[bytenum] == header[4]) {
-					noise->data[i] = noise->data[i] ^ 0x10;
+					noise->data[i] = noise->data[i] ^ 0x01;
 				}
 			}
 			bytenum = bytenum + 1;
