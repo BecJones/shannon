@@ -1,6 +1,9 @@
--------------
----Shannon---
--------------
+#######
+# Shannon
+# Developer: Becquerel Jones
+# Last Updated: September 14, 2019
+# OS: WSL Ubuntu on Windows 10
+#####
 
 Shannon is a pet project to encode plain-text messages into -
  and decode them from - audio files.

@@ -1,3 +1,10 @@
+#######
+# Shannon
+# Developer: Becquerel Jones
+# Last Updated: September 14, 2019
+# OS: WSL Ubuntu on Windows 10
+#####
+
 build: shannon.c shannon.h frontend.c frontend.h encryption.c encryption.h
 	gcc -o shannon shannon.c frontend.c encryption.c	
 	mkdir -p signal noise inbox output

@@ -1,3 +1,10 @@
+/*******
+ * Shannon
+ * Developer: Becquerel Jones
+ * Last Updated: September 14, 2019
+ * OS: WSL Ubuntu on Windows 10
+*****/
+
 #ifndef _shannon_h_
 #define _shannon_h_
 

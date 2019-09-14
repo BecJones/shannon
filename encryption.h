@@ -1,3 +1,10 @@
+/*******
+ * Shannon
+ * Developer: Becquerel Jones
+ * Last Updated: September 14, 2019
+ * OS: WSL Ubuntu on Windows 10
+*****/
+
 #ifndef _encryption_h_
 #define _encryption_h_
 
