@@ -1,0 +1,11 @@
+# gitignore
+# Files to be ignored by git.
+# # designates a comment.
+
+*~
+*.o
+*.exe
+signal/*
+noise/*
+inbox/*
+output/*
