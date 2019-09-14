@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "encryption.h"
+#include "decryption.h"
 #include "frontend.h"
 
 // Main

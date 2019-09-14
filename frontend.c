@@ -89,7 +89,10 @@ int decMenu() {
 		return res;
 	}
 
-	// Send the files to the backend
+	// Find signal in encoded file; save to outfile
+	if((res = decode(file, filesize, &outfile))) {
+		return res;
+	}
 	
 	// Export result
 	if((res = constructPath(OUTBODIR, path))) {

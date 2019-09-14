@@ -10,4 +10,4 @@ debug: shannon.c shannon.h frontend.c frontend.h encryption.c encryption.h
 	gcc -o shannon -Wall shannon.c frontend.c encryption.c
 
 clean:
-	rm -f shannon shannon.exe signal/* noise/* inbox/*
+	rm -rf shannon shannon.exe signal noise inbox output
