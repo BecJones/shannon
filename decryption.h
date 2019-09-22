@@ -1,7 +1,7 @@
 /*******
  * Shannon
  * Developer: Becquerel Jones
- * Last Updated: September 14, 2019
+ * Last Updated: September 22, 2019
  * OS: WSL Ubuntu on Windows 10
 *****/
 
@@ -11,8 +11,11 @@
 // Decode transmission
 int decode(FILE* file, uint64_t filesize, struct dataString* outfile);
 
+// Reconstitute data
+int reconstitute(struct dataString data, struct dataString* recd);
+
 // Get offset
-int getOffset(struct dataString sigcomp, uint64_t* offset);
+int getOffset(struct dataString recd, uint64_t* offset);
 
 // Get transmission length
 int getLength(struct dataString sigcomp, uint64_t* length);

@@ -1,7 +1,7 @@
 /*******
  * Shannon
  * Developer: Becquerel Jones
- * Last Updated: September 14, 2019
+ * Last Updated: September 22, 2019
  * OS: WSL Ubuntu on Windows 10
 *****/
 
@@ -9,23 +9,32 @@
 
 // Encode transmission
 int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
-	// Initialize variables
+	// Result in case of operation failure
 	int res;
+
+	// Index counters for iteration
 	uint64_t i;
 	uint64_t j;
+
+	// Key, header, and size; concatenated to signal prior to encoding
 	unsigned char** key = malloc(3 * sizeof(*key));
 	unsigned char* header = malloc(HEADER_LENGTH * sizeof(*header));
 	unsigned char* sigsize;
 
+	// File data
 	struct dataString* data = malloc(2 * sizeof(*data));
+
+	// Final concatenated signal including message and meta data
 	struct dataString finalsig;
+
+	// Signal compilation; storage for all parts of signal
 	struct dataString* sigcomp = malloc(6 * sizeof(*sigcomp));
 
 	// Allocate memory for file contents
 	data[0].size = filesizes[0];
-	data[0].data = malloc(data[0].size * sizeof(*(data[0].data)));
+	data[0].data = malloc(data[0].size);
 	data[1].size = filesizes[1];
-	data[1].data = malloc(data[1].size * sizeof(*(data[1].data)));
+	data[1].data = malloc(data[1].size);
 
 	// Ensure that noise file is large enough to contain signal file contents
 	if((data[1].size - MAX_OFFSET) / 8 < data[0].size +
