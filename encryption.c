@@ -227,16 +227,15 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 	bytenum = 0;
 	bitnum = 0;
 	strcpy(output->data, noise->data);
-	for(i = offset; i < offset + signal->size; i = i + 1) {
-		output->data[i] = (output->data[i] & 0xFE) | 
-			((signal->data[bytenum] >> bitnum) & 0x01);
-		bitnum = bitnum + 1;
-		if(bitnum >= 7) {
-			bitnum = 0;
-			bytenum = bytenum + 1;
+
+	for(bytenum = 0; bytenum < signal->size; bytenum = bytenum + 1) {
+		for(bitnum = 0; bitnum < 8; bitnum = bitnum + 1) {
+			i = offset + ((bytenum * 8) + bitnum);
+			output->data[i] = (output->data[i] & 0xFE) |
+				((signal->data[bytenum] >> bitnum) & 0x01);
 		}
 	}
-
+	
 	// Cleanup
 	free(headercheck);
 
