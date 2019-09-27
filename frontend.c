@@ -117,6 +117,17 @@ int decMenu() {
 	return 0;
 }
 
+// User prompt
+int userPrompt(char** prompt, int lines, char** result) {
+	int i;
+	for(i = 0; i < lines; i = i + 1) {
+		printf("%s\n", prompt[i]);
+	}
+	printf("USER>> ");
+	scanf("%s", *result);
+	return 0;
+}
+
 // Construct path
 int constructPath(char* fdir, char* path) {
 	if(!getcwd(path, PATH_MAX)) {

@@ -22,6 +22,9 @@ int encMenu();
 // Decode menu
 int decMenu();
 
+// User prompt
+int userPrompt(char** prompt, int lines, char** result);
+
 // Construct path
 int constructPath(char* fdir, char* path);
 
