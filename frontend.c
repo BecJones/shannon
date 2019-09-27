@@ -1,23 +1,33 @@
 /*******
  * Shannon
  * Developer: Becquerel Jones
- * Last Updated: September 14, 2019
+ * Last Updated: September 26, 2019
  * OS: WSL Ubuntu on Windows 10
 *****/
 
 #include "shannon.h"
 
 // Main menu
-int mainMenu(int argc, char** argv) {
+int mainMenu(int argc, char **argv) {
 	int res;
+	int i;
 	int scanned = -1;
+	char **prompt = malloc(3 * sizeof(*prompt));
+	for(i = 0; i < 3; i = i + 1) {
+		prompt[i] = malloc(32 * sizeof(**prompt));
+	}
 
 	printf("\n\n***\nSHANNON\n*****\n");
 
+	strcpy(prompt[0], "\n[1]\tEncode");
+	strcpy(prompt[1], "[2]\tDecode");
+	strcpy(prompt[2], "[0]\tQuit");
+
 	while(scanned) {
-		printf("\n[1]\tEncode\n[2]\tDecode\n[0]\tQuit\n\n");
+		//printf("\n[1]\tEncode\n[2]\tDecode\n[0]\tQuit\n\n");
 		res = 0;
-		scanf("%d", &scanned);
+		//scanf("%d", &scanned);
+		userPrompt(prompt, 3, "%d", &scanned);
 		if(scanned == 1) {
 			res = encMenu();
 		} else if(scanned == 2) {
@@ -30,6 +40,12 @@ int mainMenu(int argc, char** argv) {
 	}
 
 	printf("\nExit 0 SUCCESS\n\n");
+
+	// Cleanup
+	for(i = 0; i < 3; i = i + 1) {
+		free(prompt[i]);
+	}
+	free(prompt);
 
 	return 0;
 }
@@ -118,13 +134,16 @@ int decMenu() {
 }
 
 // User prompt
-int userPrompt(char** prompt, int lines, char** result) {
+int userPrompt(char **prompt, int lines, const char *format, void *result) {
+	int res = 0;
 	int i;
 	for(i = 0; i < lines; i = i + 1) {
 		printf("%s\n", prompt[i]);
 	}
 	printf("USER>> ");
-	scanf("%s", *result);
+	if(!scanf(format, result)) {
+		return 7;
+	}
 	return 0;
 }
 

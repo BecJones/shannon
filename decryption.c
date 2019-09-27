@@ -29,7 +29,7 @@ int decode(FILE* file, uint64_t filesize, struct dataString* outfile) {
 	// Read file
 	fread(data.data, sizeof(*(data.data)), data.size, file);
 
-	printf("\nTransmission size: %lu\n");
+	printf("\nTransmission size: %lu\n", data.size);
 
 	// Reconstitute data
 	if((res = reconstitute(data, &recd))) {
