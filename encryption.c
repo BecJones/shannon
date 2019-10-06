@@ -37,9 +37,10 @@ int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
 	data[1].data = malloc(data[1].size);
 
 	// Ensure that noise file is large enough to contain signal file contents
-	if((data[1].size - MAX_OFFSET) / 8 < data[0].size +
+	if(data[1].size / 8 < data[0].size + (MAX_OFFSET / 8) +
 			KEY_0_LENGTH + KEY_1_LENGTH + KEY_2_LENGTH +
 			HEADER_LENGTH + sizeof(data[0].size)) {
+		printf("ERROR: Signal file too large to store in noise file.\n");
 		return 5;
 	}
 

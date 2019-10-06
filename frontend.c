@@ -1,7 +1,7 @@
 /*******
  * Shannon
  * Developer: Becquerel Jones
- * Last Updated: September 26, 2019
+ * Last Updated: October 6, 2019
  * OS: WSL Ubuntu on Windows 10
 *****/
 
@@ -12,22 +12,22 @@ int mainMenu(int argc, char **argv) {
 	int res;
 	int i;
 	int scanned = -1;
-	char **prompt = malloc(3 * sizeof(*prompt));
-	for(i = 0; i < 3; i = i + 1) {
+	char **prompt = malloc(4 * sizeof(*prompt));
+	for(i = 0; i < 4; i = i + 1) {
 		prompt[i] = malloc(32 * sizeof(**prompt));
 	}
 
 	printf("\n\n***\nSHANNON\n*****\n");
 
-	strcpy(prompt[0], "\n[1]\tEncode");
-	strcpy(prompt[1], "[2]\tDecode");
-	strcpy(prompt[2], "[0]\tQuit");
+	strcpy(prompt[0], "\n***\nMAIN MENU\n*****");
+	strcpy(prompt[1], "[1]\tEncode");
+	strcpy(prompt[2], "[2]\tDecode");
+	strcpy(prompt[3], "[0]\tQuit");
 
 	while(scanned) {
 		//printf("\n[1]\tEncode\n[2]\tDecode\n[0]\tQuit\n\n");
-		res = 0;
 		//scanf("%d", &scanned);
-		userPrompt(prompt, 3, "%d", &scanned);
+		while((res = userPrompt(prompt, 4, "%d", &scanned)));
 		if(scanned == 1) {
 			res = encMenu();
 		} else if(scanned == 2) {
@@ -42,7 +42,7 @@ int mainMenu(int argc, char **argv) {
 	printf("\nExit 0 SUCCESS\n\n");
 
 	// Cleanup
-	for(i = 0; i < 3; i = i + 1) {
+	for(i = 0; i < 4; i = i + 1) {
 		free(prompt[i]);
 	}
 	free(prompt);
@@ -63,11 +63,13 @@ int encMenu() {
 	struct dataString outfile;
 
 	// Select signal file
+	printf("Signal File:\n");
 	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0]), fname))) {
 		return res;
 	}
 
 	// Select noise file
+	printf("Noise File:\n");
 	if((res = fileBrowse(NOISEDIR, &(files[1]), &(filesizes[1]), fname))) {
 		return res;
 	}
@@ -142,35 +144,38 @@ int userPrompt(char **prompt, int lines, const char *format, void *result) {
 	}
 	printf("USER>> ");
 	if(!scanf(format, result)) {
-		return 7;
+		res = 7;
 	}
-	return 0;
+	while(getchar() != '\n');
+	return res;
 }
 
 // Construct path
-int constructPath(char* fdir, char* path) {
+int constructPath(char *fdir, char *path) {
 	if(!getcwd(path, PATH_MAX)) {
 		return 2;
 	}
 	strcat(path, "/");
 	strcat(path, fdir);
 	strcat(path, "/");
+	return 0;
 }
 
 // File browser
-int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname) {
+int fileBrowse(char *fdir, FILE **file, uint64_t *filesize, char *fname) {
 
 	// Variable declarations
 	int res;
-	int scanned = -2;
-	FILE* tFile;
+	int scanned = 0;
+	FILE *tFile;
 	uint64_t tSize;
-	DIR* dir;
+	DIR *dir;
 	struct dirent* ent;
-	char* path = malloc(PATH_MAX);
+	char *path = malloc(PATH_MAX);
 	int i;
 	int numents;
 	struct stat dirtest = {0};
+	char **menu;
 
 	// Allocate memory for directory entries
 	char** entries = malloc(64 * sizeof(*entries));
@@ -180,56 +185,80 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname) {
 
 	// Get path to directory
 	if((res = constructPath(fdir, path))) {
+		printf("ERROR: Invalid Path\n\"%s\", \"%s\"\n", fdir, path);
 		return res;
 	}
 
 	// Ensure that directory exists
 	if(!(dir = opendir(path))) {
+		printf("ERROR: No Directory\n\"%s\"\n", path);
 		return 3;
 	}
 
-	// List files in directory
-	
-	printf("\nLoading Directory:\n%s\n", path);
-	printf("Choose file:\n");
+	// Load directory contents
+	printf("Loading Directory:\n\"%s\"\n", path);
 	i = 0;
 	while((ent = readdir(dir))) {
-		if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..") && ent->d_name[0] != '.') {
+		if(ent->d_name[0] != '.') {
 			strcpy(entries[i], ent->d_name);
 			i = i + 1;
 		}
 	}
+	// Ensure that directory has contents
 	if(!i) {
+		printf("ERROR: Empty Directory\n\"%s\"\n", path);
 		return 3;
 	}
 	numents = i;
 
-	for(i = 0; i < numents; i = i + 1) {
-		printf("[%d]\t%s\n", i + 1, entries[i]);
+	// Generate menu
+	char tpath[PATH_MAX];
+	uint64_t tsize;
+	menu = malloc((numents + 2) * sizeof(*menu));
+	for(i = 0; i < numents + 2; i = i + 1) {
+		menu[i] = malloc(PATH_MAX);
 	}
-	printf("[0]\tQuit\n");
+	strcpy(menu[0], "\n***\nFILE MENU\n*****");
+	for(i = 0; i < numents; i = i + 1) {
+		strcpy(tpath, path);
+		strcat(tpath, entries[i]);
+		stat(tpath, &dirtest);
+		tsize = dirtest.st_size;
+		sprintf(menu[i + 1], "[%d]\t%s\t.\t.\t%lu B", i + 1, entries[i], tsize);
+	}
+	strcpy(menu[numents + 1], "[0]\tQuit");
+	
+	//printf("Choose file:\n");
+	//for(i = 0; i < numents; i = i + 1) {
+	//	printf("[%d]\t%s\n", i + 1, entries[i]);
+	//}
+	//printf("[0]\tQuit\n");
 
 	// Select file from directory (or Quit)
-	while(scanned != -1) {
-		scanf("%d", &scanned);
+	while(scanned > -2) {
+		while((res = userPrompt(menu, numents + 2, "%d", &scanned)));
 		if(!scanned) {
+			printf("Aborted by User.\n");
 			return 1;
 		}
 		scanned = scanned - 1;
 		if(scanned > -1 && scanned < numents) {
 			strcpy(fname, entries[scanned]);
 			strcat(path, entries[scanned]);
-			scanned = -1;
+			scanned = -2;
+		} else {
+			scanned = 0;
 		}
 	}
-
 	printf("\nFile selected:\n%s\n", path);
 
+	// Ensure that file exists
 	if(stat(path, &dirtest) == -1) {
+		printf("ERROR: Invalid File\n\"%s\"", path);
 		return 4;
 	}
 
-	// Check file size while we're here
+	// Check file size
 	tSize = dirtest.st_size;
 
 	// Actually open the file
@@ -240,6 +269,10 @@ int fileBrowse(char* fdir, FILE** file, uint64_t* filesize, char* fname) {
 
 	// Cleanup
 	closedir(dir);
+	for(i = 0; i < numents + 2; i = i + 1) {
+		free(menu[i]);
+	}
+	free(menu);
 	for(i = 0; i < 64; i = i + 1) {
 		free(entries[i]);
 	}
