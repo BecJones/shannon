@@ -1,7 +1,7 @@
 /*******
  * Shannon
  * Developer: Becquerel Jones
- * Last Updated: September 22, 2019
+ * Last Updated: October 20, 2019
  * OS: WSL Ubuntu on Windows 10
 *****/
 
@@ -58,12 +58,62 @@ int reconstitute(struct dataString data, struct dataString* recd) {
 	}
 	recd->data = malloc(recd->size);
 
+	// Index variables
+	uint64_t i = 0;
+	uint64_t bytenum = 0;
+	int bitnum = 0;
 
+	for(bytenum = 0; bytenum < data.size; bytenum = bytenum + 1) {
+		bitnum = bytenum % 8;
+		if(bitnum == 0) {
+			recd->data[i] = 0x00;
+		}
+		recd->data[i] = recd->data[i] |
+			((data.data[bytenum] & 0x01) << bitnum);
+		if(bitnum == 7) {
+			i = i + 1;
+		}
+	}
 
 	return 0;
 }
 
 // Get offset from start of file to start of header
-int getOffset(struct dataString recd, uint64_t* offset) {
+int getOffset(struct dataString recd, uint64_t *offset) {
+	// Variables
+	unsigned char found;
+	uint64_t i;
+	int j;
+	struct dataString header;
+	header.size = HEADER_LENGTH;
+	header.data = malloc(header.size);
+
+	// Generate header
+	for(i = 0; i < header.size; i = i + 1) {
+		header.data[i] = 0xFF - i;
+	}
+
+	// Find header
+	for(i = header.size; i < recd.size; i = i + 1) {
+		found = 0x01;
+		for(j = 0; j < header.size; j = j + 1) {
+			if(recd.data[i - header.size + j] != header.data[j]) {
+				found = 0x00;
+			}
+		}
+		if(found) {
+			*offset = i;
+			i = recd.size;
+		}
+	}
+
+	if(!found) {
+		printf("ERROR: No Header Found\n");
+		return 8;
+	}
+
+	// Cleanup
+	free(header.data);
+
 	return 0;
 }

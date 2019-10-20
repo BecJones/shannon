@@ -66,7 +66,7 @@ int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
 
 	// Generate header (final signal component 3)
 	for(i = 0; i < sigcomp[3].size; i = i + 1) {
-		sigcomp[4].data[i] = 0xFF - i;
+		sigcomp[3].data[i] = 0xFF - i;
 	}
 
 	// Assign signal size string (final signal component 4)
@@ -196,6 +196,7 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 	uint64_t bytenum;
 	int bitnum;
 	uint64_t i;
+	int 
 	unsigned char* headercheck;
 	unsigned char currentbit;
 
