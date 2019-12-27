@@ -32,6 +32,8 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	// 4: Message Length (filesizes[0])
 	// 5: Message (files[0])
 	struct datastring *sigparts = malloc(6 * sizeof(*sigparts));
+	
+	struct datastring finalsig; // Container for final signal at the end
 
 	// Assign sizes to signal parts and output file
 	sigparts[0].size = KEY_0_LENGTH;
@@ -72,16 +74,8 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 		return res;
 	}
 
-	// Assign signal size string (final signal component 4)
-	for(i = 0; i < sigcomp[4].size; i = i + 1) {
-		sigsize[i] = (data[0].size >> i) & 0xFF;
-	}
-
-	// Copy raw signal (final signal component 5)
-	strcpy(sigcomp[5].data, data[0].data);
-
-	// Encode raw signal with keys
-	if((res = applyKeys(sigcomp))) {
+	// Apply keys to signal
+	if((res = applyKeys(sigparts)) < 0) {
 		return res;
 	}
 
@@ -90,12 +84,8 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 		return res;
 	}
 
-	// Prepare output struct
-	outfile->size = data[1].size;
-	outfile->data = malloc(outfile->size);
-
 	// Hide signal in noise
-	if((res = insertSignal(outfile, &finalsig, &(data[1]), sigcomp[4].data))) {
+	if((res = insertSignal(outfile, &finalsig))) {
 		return res;
 	}
 
@@ -103,6 +93,7 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	for(i = 0; i < 6; i = i + 1) {
 		free(sigparts[i].data);
 	}
+	free(finalsig.data);
 	free(sigparts);
 
 	return 0;
@@ -124,6 +115,11 @@ int loadSigParts(struct datastring *sigparts) {
 
 	// Initialize keys
 	if((res = initKeys(sigparts)) < 0) {
+		return res;
+	}
+
+	// Initialize size
+	if((res = initSize(sigparts)) < 0) {
 		return res;
 	}
 
@@ -168,7 +164,7 @@ int initKeys(struct datastring *sigparts) {
 			if(tmp == 0) {
 				random = rand();
 			}
-			sigparts[keyNum].data[keyInd] = (random >> tmp) & 0xFF;
+			sigparts[keyNum].data[keyInd] = (random >> (8 * tmp)) & 0xFF;
 		}
 	}
 
@@ -180,8 +176,11 @@ int initKeys(struct datastring *sigparts) {
 	}
 
 	// Calvinball; using all the variables as iterators now
+	// Loop through all keys
 	for(keyInd = 0; keyInd < keyNum - (sigparts[3].size - 1); keyInd = keyInd + 1) {
 		tmp = 0;
+
+		// Check for substring that looks like header
 		for(random = 0; random < sigparts[3].size; random = random + 1) {
 			if(testStr[keyInd + random] != sigparts[3].data[random]) {
 				tmp = 1;
@@ -212,25 +211,44 @@ int initKeys(struct datastring *sigparts) {
 	free(testStr);
 
 	return 0;
-}
+} // Initialize Keys
 
-// Apply keys to raw signal
-int applyKeys(struct dataString* sigcomp) {
-	uint64_t i;
-	int j;
 
-	// Generate keys
-	for(i = 0; i < sigcomp[5].size; i = i + 1) {
-		for(j = 0; j < 3; j = j + 1) {
-			sigcomp[5].data[i] = sigcomp[5].data[i] ^ sigcomp[j].data[i % sigcomp[j].size];
+// Initialize Size
+int initSize(struct datastring *sigparts) {
+	// Variables
+	unsigned int index;
+
+	// Load size of message into appropriate string
+	for(index = 0; index < sizeof(sigparts[4].size); index = index + 1) {
+		sigparts[4].data[index] = (sigparts[5].size >> (index * 8)) & 0xFF;
+	}
+
+	return 0;
+} // Initialize Size
+
+
+// Apply Keys
+int applyKeys(struct datastring *sigparts) {
+	// Variables
+	uint64_t dataIndex;
+	unsigned int keyIndex;
+
+	// Loop through all data
+	for(dataIndex = 0; dataIndex < sigcomp[5].size; dataIndex = dataIndex + 1) {
+
+		// XOR each byte of data with the next byte of each key
+		for(keyIndex = 0; keyIndex < 3; keyIndex = keyIndex + 1) {
+			sigcomp[5].data[dataIndex] = sigcomp[5].data[dataIndex] ^ sigcomp[keyIndex].data[dataIndex % sigcomp[keyIndex].size];
 		}
 	}
 
 	return 0;
-}
+} // Apply Keys
+
 
 // Build final signal
-int buildFinalSignal(struct dataString* finalsig, struct dataString* sigcomp) {
+int buildFinalSignal(struct datastring *finalsig, struct datastring *sigparts) {
 	int i;
 	uint64_t size = 0;
 
