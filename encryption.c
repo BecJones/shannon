@@ -1,82 +1,80 @@
 /*******
- * Shannon
- * Developer: Becquerel Jones
- * Last Updated: September 22, 2019
- * OS: WSL Ubuntu on Windows 10
+ * Shannon; Encryption
+ * Becquerel Jones
+ * December 27, 2019
+ * Debian 10: Buster
+ * Vim
 *****/
 
-#include "shannon.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <errno.h>
+#include <sys/types.h>
+#include "encryption.h"
 
-// Encode transmission
-int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
-	// Result in case of operation failure
-	int res;
+// Encode
+//
+// Returns:    0 if successful
+// 	      -1 if output file too small
+// 	      -2 if out of memory
+int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
+	// Variables
+	int res; // Return flag
+	unsigned char i; // Iteration index
 
-	// Index counters for iteration
-	uint64_t i;
-	uint64_t j;
+	// Signal parts
+	//
+	// 0: Key 0
+	// 1: Key 1
+	// 2: Key 2
+	// 3: Header
+	// 4: Message Length (filesizes[0])
+	// 5: Message (files[0])
+	struct datastring *sigparts = malloc(6 * sizeof(*sigparts));
 
-	// Key, header, and size; concatenated to signal prior to encoding
-	unsigned char** key = malloc(3 * sizeof(*key));
-	unsigned char* header = malloc(HEADER_LENGTH * sizeof(*header));
-	unsigned char* sigsize;
+	// Assign sizes to signal parts and output file
+	sigparts[0].size = KEY_0_LENGTH;
+	sigparts[1].size = KEY_1_LENGTH;
+	sigparts[2].size = KEY_2_LENGTH;
+	sigparts[3].size = HEADER_LENGTH;
+	sigparts[4].size = sizeof(filesizes[0]);
+	sigparts[5].size = filesizes[0];
 
-	// File data
-	struct dataString* data = malloc(2 * sizeof(*data));
+	outfile->size = filesizes[1];
 
-	// Final concatenated signal including message and meta data
-	struct dataString finalsig;
+	// Make sure output file is big enough
+	if(outfile->size / 8 < sigparts[0].size + sigparts[1].size +
+			sigparts[2].size + sigparts[3].size +
+			sigparts[4].size + sigparts[5].size + (MAX_OFFSET / 8)) {
+		return -1;
+	}
 
-	// Signal compilation; storage for all parts of signal
-	struct dataString* sigcomp = malloc(6 * sizeof(*sigcomp));
+	// Allocate memory for signal parts and output file
+	for(i = 0; i < 6; i = i + 1) {
+		sigparts[i].data = malloc(sigparts[i].size);
+		if(errno == ENOMEM) {
+			return -2;
+		}
+	}
 
-	// Allocate memory for file contents
-	data[0].size = filesizes[0];
-	data[0].data = malloc(data[0].size);
-	data[1].size = filesizes[1];
-	data[1].data = malloc(data[1].size);
-
-	// Ensure that noise file is large enough to contain signal file contents
-	if(data[1].size / 8 < data[0].size + (MAX_OFFSET / 8) +
-			KEY_0_LENGTH + KEY_1_LENGTH + KEY_2_LENGTH +
-			HEADER_LENGTH + sizeof(data[0].size)) {
-		printf("ERROR: Signal file too large to store in noise file.\n");
-		return 5;
+	outfile->data = malloc(outfile->size);
+	if(errno == ENOMEM) {
+		return -2;
 	}
 
 	// Read files
-	fread(data[0].data, sizeof(*(data[0].data)), data[0].size, files[0]);
-	fread(data[1].data, sizeof(*(data[1].data)), data[1].size, files[1]);
+	fread(sigparts[5].data, 1, sigparts[5].size, files[0]);
+	fread(outfile->data, 1, outfile->size, files[1]);
 
-	printf("\nSignal size: %lu\nNoise size: %lu\n",
-			data[0].size, data[1].size);
-
-	// Initialize sizes for all final signal components
-	sigcomp[0].size = KEY_0_LENGTH;
-	sigcomp[1].size = KEY_1_LENGTH;
-	sigcomp[2].size = KEY_2_LENGTH;
-	sigcomp[3].size = HEADER_LENGTH;
-	sigcomp[4].size = sizeof(data[0].size);
-	sigcomp[5].size = data[0].size;
-
-	// Allocate all final signal components' data storage
-	for(i = 0; i < 6; i = i + 1) {
-		sigcomp[i].data = malloc(sigcomp[i].size);
-	}
-
-	// Generate header (final signal component 3)
-	for(i = 0; i < sigcomp[3].size; i = i + 1) {
-		sigcomp[3].data[i] = 0xFF - i;
+	// Load signal parts
+	if((res = loadSigParts(sigparts)) < 0) {
+		return res;
 	}
 
 	// Assign signal size string (final signal component 4)
 	for(i = 0; i < sigcomp[4].size; i = i + 1) {
 		sigsize[i] = (data[0].size >> i) & 0xFF;
-	}
-
-	//Generate keys (final signal components 0, 1, and 2)
-	if((res = initKeys(sigcomp))) {
-		return res;
 	}
 
 	// Copy raw signal (final signal component 5)
@@ -103,57 +101,115 @@ int encode(FILE** files, uint64_t* filesizes, struct dataString* outfile) {
 
 	// Cleanup
 	for(i = 0; i < 6; i = i + 1) {
-		free(sigcomp[i].data);
+		free(sigparts[i].data);
 	}
-	free(sigcomp);
-	free(data[0].data);
-	free(data[1].data);
-	free(data);
-	free(finalsig.data);
+	free(sigparts);
 
 	return 0;
-}
+} // Encode
 
-// Initialize keys
-int initKeys(struct dataString* sigcomp) {
-	// Initialize variables
-	int keynum;
-	int i;
-	int j;
-	int shiftnum;
-	unsigned int tRand;
-	unsigned char headercheck[HEADER_LENGTH];
+
+// Load Signal Parts
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
+int loadSigParts(struct datastring *sigparts) {
+	// Variables
+	int res; // Result flag
+
+	// Initialize header
+	if((res = initHeader(sigparts)) < 0) {
+		return res;
+	}
+
+	// Initialize keys
+	if((res = initKeys(sigparts)) < 0) {
+		return res;
+	}
+
+	return 0;
+} // Load Signal Parts
+
+
+// Initialize Header
+int initHeader(struct datastring *sigparts) {
+	// Variables
+	unsigned int index; // Iteration index
+
+	// Generate header
+	for(index = 0; index < sigparts[3].size; index = index + 1) {
+
+		// All 1, except index bit
+		sigparts[3].data[index] = 0xFF ^ (0x01 << index);
+	}
+
+	return 0;
+} // Initialize Header
+
+
+// Initialize Keys
+// Returns:     0 if successful
+// 	       -2 if out of memory
+int initKeys(struct datastring *sigparts) {
+	// Variables
+	unsigned int keyNum; // Key being initialized
+	unsigned int keyInd; // Iteration index
+	unsigned int random; // Random number
+	unsigned int tmp; // General temp storage
+	unsigned char *testStr; // Test string for later
 
 	// Seed random number generation
 	srand(time(0));
 
 	// Generate keys
-	for(keynum = 0; keynum < 3; keynum = keynum + 1) {
-		tRand = rand();
-		shiftnum = 0;
-		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
-			sigcomp[keynum].data[i] = (tRand >> shiftnum) & 0xFF;
-			shiftnum = shiftnum + 1;
-			if(shiftnum >= sizeof(tRand)) {
-				tRand = rand();
-				shiftnum = 0;
+	for(keyNum = 0; keyNum < 3; keyNum = keyNum + 1) {
+		for(keyInd = 0; keyInd < sigparts[keyNum].size; keyInd = keyInd + 1) {
+			tmp = keyInd % sizeof(random);
+			if(tmp == 0) {
+				random = rand();
 			}
+			sigparts[keyNum].data[keyInd] = (random >> tmp) & 0xFF;
 		}
 	}
-
 
 	// Ensure that no keys include header sequence
-	for(keynum = 0; keynum < 3; keynum = keynum + 1) {
-		for(i = 0; i < sigcomp[keynum].size; i = i + 1) {
-			headercheck[HEADER_LENGTH - 1] = sigcomp[keynum].data[i];
-			if(!strcmp(headercheck, sigcomp[4].data)) {
-				sigcomp[keynum].data[i] = sigcomp[keynum].data[i] ^ 0x01;
-			}
-			for(j = 0; j < HEADER_LENGTH - 1; j = j + 1) {
-				headercheck[j] = headercheck[j + 1];
+	keyNum = sigparts[0].size + sigparts[1].size + sigparts[2].size;
+	testStr = malloc(keyNum);
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Calvinball; using all the variables as iterators now
+	for(keyInd = 0; keyInd < keyNum - (sigparts[3].size - 1); keyInd = keyInd + 1) {
+		tmp = 0;
+		for(random = 0; random < sigparts[3].size; random = random + 1) {
+			if(testStr[keyInd + random] != sigparts[3].data[random]) {
+				tmp = 1;
+				break;
 			}
 		}
+
+		// If this chunk of keys includes the header
+		// modify the appropriate key
+		if(tmp == 0) {
+			if(keyInd < sigparts[0].size) {
+				tmp = keyInd;
+				random = 0;
+			} else if(keyInd < sigparts[1].size) {
+				tmp = keyInd - sigparts[0].size;
+				random = 1;
+			} else {
+				tmp = keyInd -
+					(sigparts[0].size + sigparts[1].size);
+				random = 2;
+			}
+			sigparts[random].data[tmp] =
+				sigparts[random].data[tmp] - 1;
+		}
 	}
+
+	// Clean up
+	free(testStr);
 
 	return 0;
 }

@@ -1,11 +1,19 @@
 /*******
- * Shannon
- * Developer: Becquerel Jones
- * Last Updated: October 6, 2019
- * OS: WSL Ubuntu on Windows 10
+ * Shannon; Frontend
+ * Becquerel Jones
+ * December 27, 2019
+ * Debian 10: Buster
+ * Vim
 *****/
 
-#include "shannon.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <limits.h>
+#include <string.h>
+#include <sys/stat.h>
+#include "frontend.h"
 
 // Main menu
 int mainMenu(int argc, char **argv) {
