@@ -16,43 +16,58 @@ struct datastring {
 	unsigned char *data;
 };
 
-// Encode transmission
-int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile);
+// Initialize Header
+int initHeader(struct datastring *sigparts);
 
-// Decode transmission
-int decode(FILE *file, uint64_t filesize, struct datastring *outfile);
+// Initialize Keys
+int initKeys(struct datastring *sigparts);
+
+// Initialize Size
+int initSize(struct datastring *sigparts);
 
 // Load Signal Parts
 int loadSigParts(struct datastring *sigparts);
 
-// Initialize header
-int initHeader(struct datastring *sigparts);
+// Get Offset
+int getOffset(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data);
 
-// Initialize keys
-int initKeys(struct datastring *sigparts);
+// Get Header
+int getHeader(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data);
 
-// Apply keys to raw signal
-int applyKeys(struct dataString *sigcomp);
+// Get Keys
+int getKeys(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data);
 
-// Build final signal
-int buildFinalSignal(struct dataString *finalsig, struct dataString *sigcomp);
+// Get Size
+int getSize(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data);
 
-// Hide signal in noise
-int insertSignal(struct dataString *output, struct dataString *signal, struct dataString *noise, unsigned char *header);
+// Get Signal
+int getSignal(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data);
 
-// Reconstitute data
-int reconstitute(struct dataString data, struct dataString *recd);
+// Apply Keys
+int applyKeys(struct datastring *sigparts);
 
-// Get offset
-int getOffset(struct dataString recd, uint64_t *offset);
+// Assemble Signal
+int assembleSignal(struct datastring *finalsig, struct datastring *sigparts);
 
-// Get transmission length
-int getLength(struct dataString sigcomp, uint64_t *length);
+// Disassemble Signal
+int disassembleSignal(struct datastring *sigparts, struct datastring data);
 
-// Get keys
-int getKeys(struct dataString sigcomp, struct dataString *keys);
+// Deconstitute Signal
+int deconstitute(struct datastring *noise, struct datastring signal,
+		struct datastring header);
 
-// Get signal
-int getSignal(struct dataString sigcomp, struct dataString *finalsig);
+// Reconstitute Signal
+int reconstitute(struct datastring *data, struct datastring raw);
+
+// Encode Transmission
+int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile);
+
+// Decode Transmission
+int decode(FILE *file, uint64_t filesize, struct datastring *outfile);
 
 #endif

@@ -13,119 +13,6 @@
 #include <sys/types.h>
 #include "encryption.h"
 
-// Encode
-//
-// Returns:    0 if successful
-// 	      -1 if output file too small
-// 	      -2 if out of memory
-int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
-	// Variables
-	int res; // Return flag
-	unsigned char i; // Iteration index
-
-	// Signal parts
-	//
-	// 0: Key 0
-	// 1: Key 1
-	// 2: Key 2
-	// 3: Header
-	// 4: Message Length (filesizes[0])
-	// 5: Message (files[0])
-	struct datastring *sigparts = malloc(6 * sizeof(*sigparts));
-	
-	struct datastring finalsig; // Container for final signal at the end
-
-	// Assign sizes to signal parts and output file
-	sigparts[0].size = KEY_0_LENGTH;
-	sigparts[1].size = KEY_1_LENGTH;
-	sigparts[2].size = KEY_2_LENGTH;
-	sigparts[3].size = HEADER_LENGTH;
-	sigparts[4].size = sizeof(filesizes[0]);
-	sigparts[5].size = filesizes[0];
-
-	outfile->size = filesizes[1];
-
-	// Make sure output file is big enough
-	if(outfile->size / 8 < sigparts[0].size + sigparts[1].size +
-			sigparts[2].size + sigparts[3].size +
-			sigparts[4].size + sigparts[5].size + (MAX_OFFSET / 8)) {
-		return -1;
-	}
-
-	// Allocate memory for signal parts and output file
-	for(i = 0; i < 6; i = i + 1) {
-		sigparts[i].data = malloc(sigparts[i].size);
-		if(errno == ENOMEM) {
-			return -2;
-		}
-	}
-
-	outfile->data = malloc(outfile->size);
-	if(errno == ENOMEM) {
-		return -2;
-	}
-
-	// Read files
-	fread(sigparts[5].data, 1, sigparts[5].size, files[0]);
-	fread(outfile->data, 1, outfile->size, files[1]);
-
-	// Load signal parts
-	if((res = loadSigParts(sigparts)) < 0) {
-		return res;
-	}
-
-	// Apply keys to signal
-	if((res = applyKeys(sigparts)) < 0) {
-		return res;
-	}
-
-	// Concatenate final signal
-	if((res = buildFinalSignal(&finalsig, sigcomp))) {
-		return res;
-	}
-
-	// Hide signal in noise
-	if((res = insertSignal(outfile, &finalsig))) {
-		return res;
-	}
-
-	// Cleanup
-	for(i = 0; i < 6; i = i + 1) {
-		free(sigparts[i].data);
-	}
-	free(finalsig.data);
-	free(sigparts);
-
-	return 0;
-} // Encode
-
-
-// Load Signal Parts
-//
-// Returns:    0 if successful
-// 	      -2 if out of memory
-int loadSigParts(struct datastring *sigparts) {
-	// Variables
-	int res; // Result flag
-
-	// Initialize header
-	if((res = initHeader(sigparts)) < 0) {
-		return res;
-	}
-
-	// Initialize keys
-	if((res = initKeys(sigparts)) < 0) {
-		return res;
-	}
-
-	// Initialize size
-	if((res = initSize(sigparts)) < 0) {
-		return res;
-	}
-
-	return 0;
-} // Load Signal Parts
-
 
 // Initialize Header
 int initHeader(struct datastring *sigparts) {
@@ -228,6 +115,73 @@ int initSize(struct datastring *sigparts) {
 } // Initialize Size
 
 
+// Load Signal Parts
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
+int loadSigParts(struct datastring *sigparts) {
+	// Variables
+	int res; // Result flag
+
+	// Initialize header
+	if((res = initHeader(sigparts)) < 0) {
+		return res;
+	}
+
+	// Initialize keys
+	if((res = initKeys(sigparts)) < 0) {
+		return res;
+	}
+
+	// Initialize size
+	if((res = initSize(sigparts)) < 0) {
+		return res;
+	}
+
+	return 0;
+} // Load Signal Parts
+
+
+// Get Offset
+int getOffset(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data) {
+
+	return 0;
+} // Get Offset
+
+
+// Get Header
+int getHeader(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data) {
+
+	return 0;
+} // Get Header
+
+
+// Get Keys
+int getKeys(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data) {
+
+	return 0;
+} // Get Keys
+
+
+// Get Size
+int getSize(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data) {
+
+	return 0;
+} // Get Size
+
+
+// Get Signal
+int getSignal(struct datastring *sigparts, uint64_t *offset,
+		struct datastring data) {
+
+	return 0;
+} // Get Signal
+
+
 // Apply Keys
 int applyKeys(struct datastring *sigparts) {
 	// Variables
@@ -247,8 +201,8 @@ int applyKeys(struct datastring *sigparts) {
 } // Apply Keys
 
 
-// Build final signal
-int buildFinalSignal(struct datastring *finalsig, struct datastring *sigparts) {
+// Assemble Signal
+int assembleSignal(struct datastring *finalsig, struct datastring *sigparts) {
 	int i;
 	uint64_t size = 0;
 
@@ -262,10 +216,19 @@ int buildFinalSignal(struct datastring *finalsig, struct datastring *sigparts) {
 	}
 
 	return 0;
-}
+} // Assemble Signal
 
-// Hide signal in noise
-int insertSignal(struct dataString* output, struct dataString* signal, struct dataString* noise, unsigned char* header) {
+
+// Disassemble Signal
+int disassembleSignal(struct datastring *sigparts, struct datastring data) {
+
+	return 0;
+} // Disassemble Signal
+
+
+// Deconstitute Signal
+int deconstitute(struct datastring *noise, struct datastring signal,
+		struct datastring header) {
 	int offset;
 	uint64_t bytenum;
 	int bitnum;
@@ -274,7 +237,7 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 	unsigned char* headercheck;
 	unsigned char currentbit;
 
-	offset = (rand() % 300) + 113;
+	offset = (rand() % (MAX_OFFSET - MIN_OFFSET)) + MIN_OFFSET;
 	
 	// Ensure that the header sequence doesn't appear by chance before the signal
 	headercheck = malloc(offset / 8);
@@ -316,4 +279,109 @@ int insertSignal(struct dataString* output, struct dataString* signal, struct da
 	free(headercheck);
 
 	return 0;
-}
+} // Deconstitute Signal
+
+
+// Reconstitute Signal
+int reconstitute(struct datastring *data, struct datastring raw) {
+
+	return 0;
+} // Reconstitute Signal
+
+
+// Encode
+//
+// Returns:    0 if successful
+// 	      -1 if output file too small
+// 	      -2 if out of memory
+int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
+	// Variables
+	int res; // Return flag
+	unsigned char i; // Iteration index
+
+	// Signal parts
+	//
+	// 0: Key 0
+	// 1: Key 1
+	// 2: Key 2
+	// 3: Header
+	// 4: Message Length (filesizes[0])
+	// 5: Message (files[0])
+	struct datastring *sigparts = malloc(6 * sizeof(*sigparts));
+	
+	struct datastring finalsig; // Container for final signal at the end
+
+	// Assign sizes to signal parts and output file
+	sigparts[0].size = KEY_0_LENGTH;
+	sigparts[1].size = KEY_1_LENGTH;
+	sigparts[2].size = KEY_2_LENGTH;
+	sigparts[3].size = HEADER_LENGTH;
+	sigparts[4].size = sizeof(filesizes[0]);
+	sigparts[5].size = filesizes[0];
+
+	outfile->size = filesizes[1];
+
+	// Make sure output file is big enough
+	if(outfile->size / 8 < sigparts[0].size + sigparts[1].size +
+			sigparts[2].size + sigparts[3].size +
+			sigparts[4].size + sigparts[5].size + (MAX_OFFSET / 8)) {
+		return -1;
+	}
+
+	// Allocate memory for signal parts and output file
+	for(i = 0; i < 6; i = i + 1) {
+		sigparts[i].data = malloc(sigparts[i].size);
+		if(errno == ENOMEM) {
+			return -2;
+		}
+	}
+
+	outfile->data = malloc(outfile->size);
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Read files
+	fread(sigparts[5].data, 1, sigparts[5].size, files[0]);
+	fread(outfile->data, 1, outfile->size, files[1]);
+
+	// Load signal parts
+	if((res = loadSigParts(sigparts)) < 0) {
+		return res;
+	}
+
+	// Apply keys to signal
+	if((res = applyKeys(sigparts)) < 0) {
+		return res;
+	}
+
+	// Concatenate final signal
+	if((res = buildFinalSignal(&finalsig, sigcomp))) {
+		return res;
+	}
+
+	// Hide signal in noise
+	if((res = insertSignal(outfile, &finalsig))) {
+		return res;
+	}
+
+	// Cleanup
+	for(i = 0; i < 6; i = i + 1) {
+		free(sigparts[i].data);
+	}
+	free(finalsig.data);
+	free(sigparts);
+
+	return 0;
+} // Encode
+
+
+// Decode
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
+int decode(FILE *file, uint64_t filesize, struct datastring *outfile) {
+
+
+	return 0;
+} // Decode
