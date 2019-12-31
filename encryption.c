@@ -64,6 +64,11 @@ int initKeys(struct datastring *sigparts) {
 
 	// Calvinball; using all the variables as iterators now
 	// Loop through all keys
+	//
+	// keyInd: combined key byte index
+	// keyNum: combined length of all keys
+	// tmp: does this substring look like the header sequence? If so, what is the start index?
+	// random: header byte index
 	for(keyInd = 0; keyInd < keyNum - (sigparts[3].size - 1); keyInd = keyInd + 1) {
 		tmp = 0;
 
@@ -193,7 +198,8 @@ int applyKeys(struct datastring *sigparts) {
 
 		// XOR each byte of data with the next byte of each key
 		for(keyIndex = 0; keyIndex < 3; keyIndex = keyIndex + 1) {
-			sigcomp[5].data[dataIndex] = sigcomp[5].data[dataIndex] ^ sigcomp[keyIndex].data[dataIndex % sigcomp[keyIndex].size];
+			sigcomp[5].data[dataIndex] = sigcomp[5].data[dataIndex] ^ 
+				sigcomp[keyIndex].data[dataIndex % sigcomp[keyIndex].size];
 		}
 	}
 
@@ -202,17 +208,36 @@ int applyKeys(struct datastring *sigparts) {
 
 
 // Assemble Signal
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int assembleSignal(struct datastring *finalsig, struct datastring *sigparts) {
-	int i;
-	uint64_t size = 0;
+	// Variables
+	unsigned char partindex; // Part index
+	uint64_t dataindex; // Data index
+	uint64_t totalsize = 0; // Size sum
 
-	for(i = 0; i < 6; i = i + 1) {
-		size = size + sigcomp[i].size;
+	// Sum sizes of parts; finalsig size to sum
+	for(partindex = 0; partindex < 6; partindex = partindex + 1) {
+		totalsize = totalsize + sigcomp[partindex].size;
 	}
-	finalsig->size = size;
+	finalsig->size = totalsize;
+
+	// Allocate total memory
 	finalsig->data = malloc(size);
-	for(i = 0; i < 6; i = i + 1) {
-		strcat(finalsig->data, sigcomp[i].data);
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Copy all parts to finalsig
+	//
+	// totalsize: finalsig data index
+	totalsize = 0;
+	for(partindex = 0; partindex < 6; partindex = partindex + 1) {
+		for(dataindex = 0; dataindex < sigparts[partindex].size; dataindex = dataindex + 1) {
+			finalsig->data[totalsize] = sigparts[partindex].data[dataindex];
+			totalsize = totalsize + 1;
+		}
 	}
 
 	return 0;
@@ -227,56 +252,100 @@ int disassembleSignal(struct datastring *sigparts, struct datastring data) {
 
 
 // Deconstitute Signal
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int deconstitute(struct datastring *noise, struct datastring signal,
 		struct datastring header) {
-	int offset;
-	uint64_t bytenum;
-	int bitnum;
-	uint64_t i;
-	int 
-	unsigned char* headercheck;
-	unsigned char currentbit;
+	// Variables
+	unsigned int offset; // Offset from beginning of file
+	uint64_t noisebyte; // Noise byte index
+	uint64_t signalbyte = 0; // Signal byte index
+	unsigned char signalbit = 0; // Signal bit index
+	struct datastring headerCheck; // For checking to ensure that header doesn't show up prematurely later
 
+	// Pick random offset from beginning of file
+	srand(time(0));
 	offset = (rand() % (MAX_OFFSET - MIN_OFFSET)) + MIN_OFFSET;
+
+	// Deconstitute signal into noise
+	// Loop through noise, byte by byte, starting at offset
+	for(noisebyte = offset; signalbyte < signal.size; noisebyte = noisebyte + 1) {
+
+		// Force noise byte's lsb to signal byte's current bit
+		noise->data[noisebyte] = (noise->data[noisebyte] & 0xFE) |
+			((signal[signalbyte] >> signalbit) & 0x01);
+
+		// Increment signal bit
+		signalbit = signalbit + 1;
+
+		// When signal byte is done, increment signal byte and reset signal bit
+		if(signalbit >= 8) {
+			signalbit = 0;
+			signalbyte = signalbyte + 1;
+		}
+	}
 	
 	// Ensure that the header sequence doesn't appear by chance before the signal
-	headercheck = malloc(offset / 8);
-	bytenum = 0;
-	headercheck[0] = 0x00;
-	for(i = 0; i < (offset / 8) * 8; i = i + 1) {
-		headercheck[bytenum] = headercheck[bytenum] |
-			(noise->data[i] & 0x01);
-		headercheck[bytenum] = headercheck[bytenum] << 1;
-		if(i % 8 == 7) {
-			if(bytenum > 3) {
-				if(headercheck[bytenum - 4] == header[0] &&
-						headercheck[bytenum - 3] == header[1] &&
-						headercheck[bytenum - 2] == header[2] &&
-						headercheck[bytenum - 1] == header[3] &&
-						headercheck[bytenum] == header[4]) {
-					noise->data[i] = noise->data[i] ^ 0x01;
-				}
+	// Keys are before header and longer than header; it's okay to overshoot by up to a byte
+	// It's less okay to read a false positive header
+	headercheck.size = (offset / 8) + 1;
+	headercheck.data = malloc(headercheck.size);
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Reconstitute noise file prior to signal
+	signalbyte = 0;
+	signalbit = 0;
+	for(noisebyte = 0; noisebyte < headercheck.size * 8; noisebyte = noisebyte + 1) {
+
+		// Clear new "signal" byte
+		if(signalbit == 0) {
+			headercheck.data[signalbyte] = 0x00;
+		}
+
+		// Force next bit of "signal" byte to lsb of current noise byte
+		headercheck.data[signalbyte] = headercheck.data[signalbyte] |
+			((noise->data[noisebyte] & 0x01) << signalbit);
+
+		// Increment signal bit
+		signalbit = signalbit + 1;
+
+		// When signal byte is done, increment signal byte and reset signal bit
+		if(signalbit >= 8) {
+			signalbit = 0;
+			signalbyte = signalbyte + 1;
+		}
+	}
+
+	// Check "signal" for fake headers
+	//
+	// signalbyte: headercheck index
+	// signalbit: header found/header start index
+	// noisebyte: header index
+	for(signalbyte = 0; signalbyte < headercheck.size - (header.size - 1); signalbyte = signalbyte + 1) {
+		signalbit = 0;
+
+		// Check substring for header
+		for(noisebyte = 0; noisebyte < header.size; noisebyte = noisebyte + 1) {
+			if(headercheck.data[signalbyte + noisebyte] != header.data[noisebyte]) {
+				signalbit = 1;
+				break;
 			}
-			bytenum = bytenum + 1;
-			headercheck[bytenum] = 0x00;
+		}
+
+		// No difference from header; flip first bit of first byte of substring in noise file
+		if(signalbit == 0) {
+			noise->data[signalbyte * 8] = noise->data[signalbyte * 8] ^ 0x01;
+
+			// Start over
+			signalbyte = 0;
 		}
 	}
 
-	// Hide the signal
-	bytenum = 0;
-	bitnum = 0;
-	strcpy(output->data, noise->data);
-
-	for(bytenum = 0; bytenum < signal->size; bytenum = bytenum + 1) {
-		for(bitnum = 0; bitnum < 8; bitnum = bitnum + 1) {
-			i = offset + ((bytenum * 8) + bitnum);
-			output->data[i] = (output->data[i] & 0xFE) |
-				((signal->data[bytenum] >> bitnum) & 0x01);
-		}
-	}
-	
 	// Cleanup
-	free(headercheck);
+	free(headercheck.data);
 
 	return 0;
 } // Deconstitute Signal
@@ -308,6 +377,9 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	// 4: Message Length (filesizes[0])
 	// 5: Message (files[0])
 	struct datastring *sigparts = malloc(6 * sizeof(*sigparts));
+	if(errno == ENOMEM) {
+		return -2;
+	}
 	
 	struct datastring finalsig; // Container for final signal at the end
 
@@ -355,13 +427,13 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 		return res;
 	}
 
-	// Concatenate final signal
-	if((res = buildFinalSignal(&finalsig, sigcomp))) {
+	// Assemble final signal
+	if((res = assembleSignal(&finalsig, sigparts)) < 0) {
 		return res;
 	}
 
-	// Hide signal in noise
-	if((res = insertSignal(outfile, &finalsig))) {
+	// Deconstitute signal in noise
+	if((res = deconstituteSignal(outfile, finalsig, sigparts[3])) < 0) {
 		return res;
 	}
 
