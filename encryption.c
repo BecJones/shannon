@@ -8,10 +8,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <time.h>
 #include <errno.h>
-//#include <sys/types.h>
 #include "encryption.h"
 
 
@@ -149,32 +147,119 @@ int loadSigParts(struct datastring *sigparts) {
 
 
 // Get Offset
+//
+// Returns:    0 if successful
+// 	      -1 if header not found
+// 	      -2 if out of memory
 int getOffset(struct datastring *sigparts, uint64_t *offset,
 		struct datastring data) {
+	// Variables
+	uint64_t dataIndex; // Data index
+	uint8_t headerIndex; // Header index
+	int res; // Result flag
 
-	return 0;
+	// Allocate memory for header
+	sigparts[3].size = HEADER_LENGTH;
+	sigparts[3].data = malloc(sigparts[3].size * sizeof(*(sigparts[3].data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Generate header
+	if((res = initHeader(sigparts)) < 0) {
+		return res;
+	}
+
+	// Loop through data
+	for(dataIndex = 0; dataIndex < data.size - (sigparts[3].size - 1); dataIndex = dataIndex + 1) {
+		res = 0;
+
+		// Check for header substring
+		for(headerIndex = 0; headerIndex < sigparts[3].size; headerIndex = headerIndex + 1) {
+			if(data.data[dataIndex + headerIndex] != sigparts[3].data[headerIndex]) {
+				res = 1;
+				break;
+			}
+		}
+
+		// No difference between substring and header; header found
+		if(res == 0) {
+			*offset = dataIndex;
+			return 0;
+		}
+	}
+
+	// Header not found in data
+	return -1;
 } // Get Offset
 
 
-// Get Header
-int getHeader(struct datastring *sigparts, uint64_t *offset,
-		struct datastring data) {
-
-	return 0;
-} // Get Header
-
-
 // Get Keys
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int getKeys(struct datastring *sigparts, uint64_t *offset,
 		struct datastring data) {
+	// Variables
+	uint64_t loopStart; // Loop start
+	uint64_t dataIndex; // Data index
+	uint8_t keyIndex; // Key index
+
+	// Allocate space for keys
+	sigparts[0].size = KEY_0_LENGTH;
+	sigparts[1].size = KEY_1_LENGTH;
+	sigparts[2].size = KEY_2_LENGTH;
+	for(keyIndex = 0; keyIndex < 3; keyIndex = keyIndex + 1) {
+		sigparts[keyIndex].data =
+			malloc(sigparts[keyIndex].size * sizeof(*(sigparts[keyIndex].data)));
+		if(errno == ENOMEM) {
+			return -2;
+		}
+	}
+
+	// Load key 0
+	loopStart = *offset - (KEY_0_LENGTH + KEY_1_LENGTH + KEY_2_LENGTH);
+	for(keyIndex = 0; keyIndex < KEY_0_LENGTH; keyIndex = keyIndex + 1) {
+		sigparts[0].data[keyIndex] = data.data[loopStart + keyIndex];
+	}
+
+	// Load key 1
+	loopStart = loopStart + KEY_0_LENGTH;
+	for(keyIndex = 0; keyIndex < KEY_1_LENGTH; keyIndex = keyIndex + 1) {
+		sigparts[1].data[keyIndex] = data.data[loopStart + keyIndex];
+	}
+
+	// Load key 2
+	loopStart = loopStart + KEY_1_LENGTH;
+	for(keyIndex = 0; keyIndex < KEY_2_LENGTH; keyIndex = keyIndex + 1) {
+		sigparts[2].data[keyIndex] = data.data[loopStart + keyIndex];
+	}
 
 	return 0;
 } // Get Keys
 
 
 // Get Size
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int getSize(struct datastring *sigparts, uint64_t *offset,
 		struct datastring data) {
+	// Variables
+	uint64_t loopStart; // Loop start
+	uint8_t sizeIndex; // Size index
+
+	// Allocate space for size
+	sigparts[4].size = sizeof(sigparts[4].size);
+	sigparts[4].data = malloc(sigparts[4].size * sizeof(*(sigparts[4].data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Load size
+	for(sizeIndex = 0; sizeIndex < sigparts[4].size; sizeIndex = sizeIndex + 1) {
+		sigparts[4].data[sizeIndex] = data.data[*offset + HEADER_LENGTH + sizeIndex];
+	}
 
 	return 0;
 } // Get Size

@@ -1,6 +1,8 @@
 #ifndef _encryption_h_
 #define _encryption_h_
 
+#include <stdint.h>
+
 #define KEY_0_LENGTH 5
 #define KEY_1_LENGTH 11
 #define KEY_2_LENGTH 12
@@ -30,10 +32,6 @@ int loadSigParts(struct datastring *sigparts);
 
 // Get Offset
 int getOffset(struct datastring *sigparts, uint64_t *offset,
-		struct datastring data);
-
-// Get Header
-int getHeader(struct datastring *sigparts, uint64_t *offset,
 		struct datastring data);
 
 // Get Keys
