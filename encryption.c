@@ -8,9 +8,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 #include <errno.h>
-#include <sys/types.h>
+//#include <sys/types.h>
 #include "encryption.h"
 
 
@@ -194,12 +195,12 @@ int applyKeys(struct datastring *sigparts) {
 	unsigned int keyIndex;
 
 	// Loop through all data
-	for(dataIndex = 0; dataIndex < sigcomp[5].size; dataIndex = dataIndex + 1) {
+	for(dataIndex = 0; dataIndex < sigparts[5].size; dataIndex = dataIndex + 1) {
 
 		// XOR each byte of data with the next byte of each key
 		for(keyIndex = 0; keyIndex < 3; keyIndex = keyIndex + 1) {
-			sigcomp[5].data[dataIndex] = sigcomp[5].data[dataIndex] ^ 
-				sigcomp[keyIndex].data[dataIndex % sigcomp[keyIndex].size];
+			sigparts[5].data[dataIndex] = sigparts[5].data[dataIndex] ^ 
+				sigparts[keyIndex].data[dataIndex % sigparts[keyIndex].size];
 		}
 	}
 
@@ -219,12 +220,12 @@ int assembleSignal(struct datastring *finalsig, struct datastring *sigparts) {
 
 	// Sum sizes of parts; finalsig size to sum
 	for(partindex = 0; partindex < 6; partindex = partindex + 1) {
-		totalsize = totalsize + sigcomp[partindex].size;
+		totalsize = totalsize + sigparts[partindex].size;
 	}
 	finalsig->size = totalsize;
 
 	// Allocate total memory
-	finalsig->data = malloc(size);
+	finalsig->data = malloc(finalsig->size * sizeof(*(finalsig->data)));
 	if(errno == ENOMEM) {
 		return -2;
 	}
@@ -262,7 +263,7 @@ int deconstitute(struct datastring *noise, struct datastring signal,
 	uint64_t noisebyte; // Noise byte index
 	uint64_t signalbyte = 0; // Signal byte index
 	unsigned char signalbit = 0; // Signal bit index
-	struct datastring headerCheck; // For checking to ensure that header doesn't show up prematurely later
+	struct datastring headercheck; // For checking to ensure that header doesn't show up prematurely later
 
 	// Pick random offset from beginning of file
 	srand(time(0));
@@ -274,7 +275,7 @@ int deconstitute(struct datastring *noise, struct datastring signal,
 
 		// Force noise byte's lsb to signal byte's current bit
 		noise->data[noisebyte] = (noise->data[noisebyte] & 0xFE) |
-			((signal[signalbyte] >> signalbit) & 0x01);
+			((signal.data[signalbyte] >> signalbit) & 0x01);
 
 		// Increment signal bit
 		signalbit = signalbit + 1;
@@ -433,7 +434,7 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	}
 
 	// Deconstitute signal in noise
-	if((res = deconstituteSignal(outfile, finalsig, sigparts[3])) < 0) {
+	if((res = deconstitute(outfile, finalsig, sigparts[3])) < 0) {
 		return res;
 	}
 

@@ -1,10 +1,3 @@
-/*******
- * Shannon
- * Developer: Becquerel Jones
- * Last Updated: September 26, 2019
- * OS: WSL Ubuntu on Windows 10
-*****/
-
 #ifndef _frontend_h_
 #define _frontend_h_
 
@@ -32,6 +25,6 @@ int constructPath(char *fdir, char *path);
 int fileBrowse(char *fdir, FILE **file, uint64_t *filesize, char *fname);
 
 // Export file
-int exportFile(char *path, struct dataString output);
+int exportFile(char *path, struct datastring outfile);
 
 #endif

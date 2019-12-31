@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <limits.h>
@@ -69,7 +70,7 @@ int encMenu() {
 	uint64_t* filesizes = malloc(2 * sizeof(*filesizes));
 	char fname[PATH_MAX];
 	char path[PATH_MAX];
-	struct dataString outfile;
+	struct datastring outfile;
 
 	// Select signal file
 	printf("Signal File:\n");
@@ -116,7 +117,7 @@ int decMenu() {
 	FILE* file;
 	uint64_t filesize;
 	char path[PATH_MAX];
-	struct dataString outfile;
+	struct datastring outfile;
 
 	// Select encoded file
 	if((res = fileBrowse(INBOXDIR, &file, &filesize, path))) {
@@ -295,7 +296,7 @@ int fileBrowse(char *fdir, FILE **file, uint64_t *filesize, char *fname) {
 }
 
 // Export file
-int exportFile(char* path, struct dataString output) {
+int exportFile(char* path, struct datastring output) {
 	FILE* outfile;
 
 	if(!(outfile = fopen(path, "w"))) {
@@ -310,5 +311,5 @@ int exportFile(char* path, struct dataString output) {
 
 // Main
 int main(int argc, char **argv) {
-	return mainMenu();
+	return mainMenu(argc, argv);
 } // Main
