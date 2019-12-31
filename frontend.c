@@ -1,7 +1,7 @@
 /*******
  * Shannon; Frontend
  * Becquerel Jones
- * December 27, 2019
+ * December 30, 2019
  * Debian 10: Buster
  * Vim
 *****/
@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "encryption.h"
 #include "frontend.h"
 
 // Main menu
@@ -305,3 +306,9 @@ int exportFile(char* path, struct dataString output) {
 
 	return 0;
 }
+
+
+// Main
+int main(int argc, char **argv) {
+	return mainMenu();
+} // Main
