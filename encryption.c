@@ -266,8 +266,33 @@ int getSize(struct datastring *sigparts, uint64_t *offset,
 
 
 // Get Signal
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int getSignal(struct datastring *sigparts, uint64_t *offset,
 		struct datastring data) {
+	// Variables
+	uint64_t index; // Index
+
+	// Initialize signal size
+	sigparts[5].size = 0;
+
+	// Load signal size from size part
+	for(index = 0; index < sigparts[4].size; index = index + 1) {
+		sigparts[5].size = (sigparts[5].size | sigparts[4].data[index]) << 8;
+	}
+
+	// Allocate memory for signal
+	sigparts[5].data = malloc(sigparts[5].size);
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Load signal from data
+	for(index = 0; index < sigparts[5].size; index = index + 1) {
+		sigparts[5].data[index] =
+			data.data[index + *offset + sigparts[3].size + sigparts[4].size];
+	}
 
 	return 0;
 } // Get Signal
@@ -332,6 +357,28 @@ int assembleSignal(struct datastring *finalsig, struct datastring *sigparts) {
 
 // Disassemble Signal
 int disassembleSignal(struct datastring *sigparts, struct datastring data) {
+	// Variables
+	int res; // Result flag
+	uint64_t *offset = malloc(sizeof(*offset)); // Header offset from start of file
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	if((res = getOffset(sigparts, offset, data)) < 0) { // Get offset and header
+		return res;
+	}
+
+	if((res = getKeys(sigparts, offset, data)) < 0) { // Get keys
+		return res;
+	}
+
+	if((res = getSize(sigparts, offset, data)) < 0) { // Get signal size
+		return res;
+	}
+
+	if((res = getSignal(sigparts, offset, data)) < 0) { // Get signal
+		return res;
+	}
 
 	return 0;
 } // Disassemble Signal
@@ -438,7 +485,32 @@ int deconstitute(struct datastring *noise, struct datastring signal,
 
 
 // Reconstitute Signal
+//
+// Returns:    0 if successful
+// 	      -2 if out of memory
 int reconstitute(struct datastring *data, struct datastring raw) {
+	// Variables
+	unsigned char offset;
+	uint64_t byteindex;
+
+	// Allocate memory for reconstituted signal
+	data->size = raw.size / 8;
+	data->data = malloc(data->size * sizeof(*(data->data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Consilidate LSBs from raw into data
+	for(byteindex = 0; byteindex < data->size; byteindex = byteindex + 1) {
+		// Clear any garbage memory from current byte
+		data->data[byteindex] = 0;
+		
+		// Load in LSBs from next 8 bytes of raw input
+		for(offset = 0; offset < 8; offset = offset + 1) {
+			data->data[byteindex] = data->data[byteindex] | 
+					(raw.data[(byteindex * 8) + offset] & 0x01) << offset;
+		}
+	}
 
 	return 0;
 } // Reconstitute Signal
@@ -539,7 +611,6 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 // Returns:    0 if successful
 // 	      -2 if out of memory
 int decode(FILE *file, uint64_t filesize, struct datastring *outfile) {
-
 
 	return 0;
 } // Decode
