@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "encryption.h"
 #include "frontend.h"
 
@@ -66,11 +67,30 @@ int encMenu() {
 
 	// Initialize variables
 	int res;
-	FILE** files = malloc(2 * sizeof(*files));
-	uint64_t* filesizes = malloc(2 * sizeof(*filesizes));
+	FILE **files = malloc(2 * sizeof(*files));
+	uint64_t *filesizes = malloc(2 * sizeof(*filesizes));
 	char fname[PATH_MAX];
 	char path[PATH_MAX];
+	struct datastring *infiles;
 	struct datastring outfile;
+
+	// Allocate space for files
+	files = malloc(2 * sizeof(*files));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Allocate space for file sizes
+	filesizes = malloc(2 * sizeof(*filesizes));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Allocate space for input files
+	infiles = malloc(2 * sizeof(*infiles));
+	if(errno == ENOMEM) {
+		return -2;
+	}
 
 	// Select signal file
 	printf("Signal File:\n");
@@ -84,8 +104,27 @@ int encMenu() {
 		return res;
 	}
 
+	// Allocate space for signal file
+	infiles[0].size = filesizes[0];
+	infiles[0].data = malloc(infiles[0].size * sizeof(*(infiles[0].data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Allocate space for noise file
+	infiles[1].size = filesizes[1];
+	infiles[1].data = malloc(infiles[1].size * sizeof(*(infiles[1].data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Read files
+	fread(infiles[0].data, 1, infiles[0].size, files[0]);
+	fread(infiles[1].data, 1, infiles[1].size, files[1]);
+
 	// Hide signal file in noise file
-	if((res = encode(files, filesizes, &outfile))) {
+	// encode() frees infile data
+	if((res = encode(infiles, &outfile))) {
 		return res;
 	}
 
@@ -102,6 +141,7 @@ int encMenu() {
 	fclose(files[0]);
 	fclose(files[1]);
 	free(outfile.data);
+	free(infiles);
 	free(files);
 	free(filesizes);
 	
@@ -117,6 +157,7 @@ int decMenu() {
 	FILE* file;
 	uint64_t filesize;
 	char path[PATH_MAX];
+	struct datastring infile;
 	struct datastring outfile;
 
 	// Select encoded file
@@ -124,8 +165,19 @@ int decMenu() {
 		return res;
 	}
 
+	// Allocate space for input file
+	infile.size = filesize;
+	infile.data = malloc(infile.size * sizeof(*(infile.data)));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Read input file
+	fread(infile.data, 1, infile.size, file);
+
 	// Find signal in encoded file; save to outfile
-	if((res = decode(file, filesize, &outfile))) {
+	// Decode frees infile data
+	if((res = decode(&infile, &outfile))) {
 		return res;
 	}
 	
@@ -237,12 +289,6 @@ int fileBrowse(char *fdir, FILE **file, uint64_t *filesize, char *fname) {
 		sprintf(menu[i + 1], "[%d]\t%s\t.\t.\t%lu B", i + 1, entries[i], tsize);
 	}
 	strcpy(menu[numents + 1], "[0]\tQuit");
-	
-	//printf("Choose file:\n");
-	//for(i = 0; i < numents; i = i + 1) {
-	//	printf("[%d]\t%s\n", i + 1, entries[i]);
-	//}
-	//printf("[0]\tQuit\n");
 
 	// Select file from directory (or Quit)
 	while(scanned > -2) {

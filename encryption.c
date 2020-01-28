@@ -1,7 +1,7 @@
 /*******
  * Shannon; Encryption
  * Becquerel Jones
- * January 23, 2020
+ * January 27, 2020
  * Debian 10: Buster
  * Vim
 *****/
@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdint.h>
 #include <errno.h>
 #include "encryption.h"
 
@@ -380,6 +381,13 @@ int disassembleSignal(struct datastring *sigparts, struct datastring data) {
 		return res;
 	}
 
+	if((res = applyKeys(sigparts)) < 0) { // Apply keys to signal
+		return res;
+	}
+
+	// Clean up
+	free(offset);
+
 	return 0;
 } // Disassemble Signal
 
@@ -488,13 +496,13 @@ int deconstitute(struct datastring *noise, struct datastring signal,
 //
 // Returns:    0 if successful
 // 	      -2 if out of memory
-int reconstitute(struct datastring *data, struct datastring raw) {
+int reconstitute(struct datastring *data) {
 	// Variables
 	unsigned char offset;
 	uint64_t byteindex;
 
 	// Allocate memory for reconstituted signal
-	data->size = raw.size / 8;
+	uint64_t datasize = data->size / 8;
 	data->data = malloc(data->size * sizeof(*(data->data)));
 	if(errno == ENOMEM) {
 		return -2;
@@ -507,9 +515,18 @@ int reconstitute(struct datastring *data, struct datastring raw) {
 		
 		// Load in LSBs from next 8 bytes of raw input
 		for(offset = 0; offset < 8; offset = offset + 1) {
-			data->data[byteindex] = data->data[byteindex] | 
-					(raw.data[(byteindex * 8) + offset] & 0x01) << offset;
+			data->data[byteindex] = 
+				data->data[byteindex] | 
+				((data->data[(byteindex * 8) + offset] & 0x01) << 
+				 offset);
 		}
+	}
+
+	// Reallocate data to fit closer around reconstited form
+	data->size = datasize;
+	data->data = realloc(data->data, data->size);
+	if(errno == ENOMEM) {
+		return -2;
 	}
 
 	return 0;
@@ -521,7 +538,8 @@ int reconstitute(struct datastring *data, struct datastring raw) {
 // Returns:    0 if successful
 // 	      -1 if output file too small
 // 	      -2 if out of memory
-int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
+int encode(struct datastring *infiles,
+		struct datastring *outfile) {
 	// Variables
 	int res; // Return flag
 	unsigned char i; // Iteration index
@@ -546,15 +564,17 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	sigparts[1].size = KEY_1_LENGTH;
 	sigparts[2].size = KEY_2_LENGTH;
 	sigparts[3].size = HEADER_LENGTH;
-	sigparts[4].size = sizeof(filesizes[0]);
-	sigparts[5].size = filesizes[0];
+	sigparts[4].size = sizeof(infiles[0].size);
+	sigparts[5].size = infiles[0].size;
 
-	outfile->size = filesizes[1];
+	outfile->size = infiles[1].size;
 
 	// Make sure output file is big enough
-	if(outfile->size / 8 < sigparts[0].size + sigparts[1].size +
+	if(outfile->size / 8 < sigparts[0].size + 
+			sigparts[1].size +
 			sigparts[2].size + sigparts[3].size +
-			sigparts[4].size + sigparts[5].size + (MAX_OFFSET / 8)) {
+			sigparts[4].size + sigparts[5].size + 
+			(MAX_OFFSET / 8)) {
 		return -1;
 	}
 
@@ -571,9 +591,9 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 		return -2;
 	}
 
-	// Read files
-	fread(sigparts[5].data, 1, sigparts[5].size, files[0]);
-	fread(outfile->data, 1, outfile->size, files[1]);
+	// Copy files
+	sigparts[5] = infiles[0];
+	*outfile = infiles[1];
 
 	// Load signal parts
 	if((res = loadSigParts(sigparts)) < 0) {
@@ -599,8 +619,11 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 	for(i = 0; i < 6; i = i + 1) {
 		free(sigparts[i].data);
 	}
-	free(finalsig.data);
 	free(sigparts);
+	free(finalsig.data);
+	// infiles[0].data became sigparts[5].data
+	// and was already freed
+	free(infiles[1].data);
 
 	return 0;
 } // Encode
@@ -610,7 +633,40 @@ int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile) {
 //
 // Returns:    0 if successful
 // 	      -2 if out of memory
-int decode(FILE *file, uint64_t filesize, struct datastring *outfile) {
+int decode(struct datastring *infile,
+		struct datastring *outfile) {
+	// Variables
+	int res; // Return flag
+	uint64_t i; // Iteration index
+	//struct datastring data; // Raw input file
+	struct datastring *sigparts; // Decomposition of input
+
+	// Allocate space for input decomposition
+	sigparts = malloc(6 * sizeof(*sigparts));
+	if(errno == ENOMEM) {
+		return -2;
+	}
+
+	// Reconstitute input data from LSBs
+	if((res = reconstitute(infile)) < 0) {
+		return res;
+	}
+
+	// Break input data into chunks
+	if((res = disassembleSignal(sigparts, *infile)) < 0) {
+		return res;
+	}
+
+	// Copy message to output
+	*outfile = sigparts[5];
+
+	// Clean up
+	// Skip sigparts[5], as that data is now outfile->data
+	for(i = 0; i < 5; i = i + 1) {
+		free(sigparts[i].data);
+	}
+	free(sigparts);
+	free(infile->data);
 
 	return 0;
 } // Decode

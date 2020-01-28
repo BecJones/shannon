@@ -1,8 +1,6 @@
 #ifndef _encryption_h_
 #define _encryption_h_
 
-#include <stdint.h>
-
 #define KEY_0_LENGTH 5
 #define KEY_1_LENGTH 11
 #define KEY_2_LENGTH 12
@@ -60,12 +58,12 @@ int deconstitute(struct datastring *noise, struct datastring signal,
 		struct datastring header);
 
 // Reconstitute Signal
-int reconstitute(struct datastring *data, struct datastring raw);
+int reconstitute(struct datastring *data);
 
 // Encode Transmission
-int encode(FILE **files, uint64_t *filesizes, struct datastring *outfile);
+int encode(struct datastring *infiles, struct datastring *outfile);
 
 // Decode Transmission
-int decode(FILE *file, uint64_t filesize, struct datastring *outfile);
+int decode(struct datastring *infile, struct datastring *outfile);
 
 #endif
