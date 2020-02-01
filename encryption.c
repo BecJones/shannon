@@ -1,7 +1,7 @@
 /*******
  * Shannon; Encryption
  * Becquerel Jones
- * January 27, 2020
+ * January 31, 2020
  * Debian 10: Buster
  * Vim
 *****/
@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <errno.h>
 #include "encryption.h"
+
+#define DBG 1
 
 
 // Initialize Header
@@ -365,28 +367,56 @@ int disassembleSignal(struct datastring *sigparts, struct datastring data) {
 		return -2;
 	}
 
+#if DBG == 1
+	printf("disassembleSignal()>> Initialization complete.\n");
+#endif
+
 	if((res = getOffset(sigparts, offset, data)) < 0) { // Get offset and header
 		return res;
 	}
+
+#if DBG == 1
+	printf("disassembleSignal()>> Got offset.\n");
+#endif
 
 	if((res = getKeys(sigparts, offset, data)) < 0) { // Get keys
 		return res;
 	}
 
+#if DBG == 1
+	printf("disassembleSignal()>> Got keys.\n");
+#endif
+
 	if((res = getSize(sigparts, offset, data)) < 0) { // Get signal size
 		return res;
 	}
+
+#if DBG == 1
+	printf("disassembleSignal()>> Got signal size.\n");
+#endif
 
 	if((res = getSignal(sigparts, offset, data)) < 0) { // Get signal
 		return res;
 	}
 
+#if DBG == 1
+	printf("disassembleSignal()>> Got signal.\n");
+#endif
+
 	if((res = applyKeys(sigparts)) < 0) { // Apply keys to signal
 		return res;
 	}
 
+#if DBG == 1
+	printf("disassembleSignal()>> Applied keys.\n");
+#endif
+
 	// Clean up
 	free(offset);
+
+#if DBG == 1
+	printf("disassembleSignal()>> Cleanup complete.\n");
+#endif
 
 	return 0;
 } // Disassemble Signal
@@ -503,13 +533,17 @@ int reconstitute(struct datastring *data) {
 
 	// Allocate memory for reconstituted signal
 	uint64_t datasize = data->size / 8;
-	data->data = malloc(data->size * sizeof(*(data->data)));
+	//data->data = malloc(data->size * sizeof(*(data->data)));
 	if(errno == ENOMEM) {
 		return -2;
 	}
 
+#if DBG == 1
+	printf("reconstitute()>> Initialization complete.\n");
+#endif
+
 	// Consilidate LSBs from raw into data
-	for(byteindex = 0; byteindex < data->size; byteindex = byteindex + 1) {
+	for(byteindex = 0; byteindex < datasize; byteindex = byteindex + 1) {
 		// Clear any garbage memory from current byte
 		data->data[byteindex] = 0;
 		
@@ -522,12 +556,20 @@ int reconstitute(struct datastring *data) {
 		}
 	}
 
+#if DBG == 1
+	printf("reconstitute()>> Consolidation complete.\n");
+#endif
+
 	// Reallocate data to fit closer around reconstited form
 	data->size = datasize;
 	data->data = realloc(data->data, data->size);
 	if(errno == ENOMEM) {
 		return -2;
 	}
+
+#if DBG == 1
+	printf("reconstitute()>> Reallocation complete.\n");
+#endif
 
 	return 0;
 } // Reconstitute Signal
@@ -578,8 +620,16 @@ int encode(struct datastring *infiles,
 		return -1;
 	}
 
+#if DBG == 1
+	printf("encode()>> Initialization complete.\n");
+	printf("encode()>> signal size: %lu B.\n", sigparts[5].size);
+	printf("encode()>> noise size: %lu B.\n", infiles[1].size);
+	printf("encode()>> output size: %lu B\n", outfile->size);
+#endif
+
 	// Allocate memory for signal parts and output file
-	for(i = 0; i < 6; i = i + 1) {
+	// Skip final part; sigparts[5] is input data
+	for(i = 0; i < 5; i = i + 1) {
 		sigparts[i].data = malloc(sigparts[i].size);
 		if(errno == ENOMEM) {
 			return -2;
@@ -600,20 +650,37 @@ int encode(struct datastring *infiles,
 		return res;
 	}
 
+#if DBG == 1
+	printf("encode()>> Loaded signal parts.\n");
+#endif
+
 	// Apply keys to signal
 	if((res = applyKeys(sigparts)) < 0) {
 		return res;
 	}
+
+#if DBG == 1
+	printf("encode()>> Applied keys.\n");
+#endif
 
 	// Assemble final signal
 	if((res = assembleSignal(&finalsig, sigparts)) < 0) {
 		return res;
 	}
 
+#if DBG == 1
+	printf("encode()>> Assembled signal.\n");
+	printf("encode()>> Final signal size: %lu B.\n", finalsig.size);
+#endif
+
 	// Deconstitute signal in noise
 	if((res = deconstitute(outfile, finalsig, sigparts[3])) < 0) {
 		return res;
 	}
+
+#if DBG == 1
+	printf("encode()>> Deconstituted signal.\n");
+#endif
 
 	// Cleanup
 	for(i = 0; i < 6; i = i + 1) {
@@ -623,7 +690,11 @@ int encode(struct datastring *infiles,
 	free(finalsig.data);
 	// infiles[0].data became sigparts[5].data
 	// and was already freed
-	free(infiles[1].data);
+	//free(infiles[1].data);
+
+#if DBG == 1
+	printf("encode()>> Cleanup complete.\n");
+#endif
 
 	return 0;
 } // Encode
@@ -647,15 +718,27 @@ int decode(struct datastring *infile,
 		return -2;
 	}
 
+#if DBG == 1
+	printf("decode()>> Initialization complete.\n");
+#endif
+
 	// Reconstitute input data from LSBs
 	if((res = reconstitute(infile)) < 0) {
 		return res;
 	}
 
+#if DBG == 1
+	printf("decode()>> Reconstitution complete.\n");
+#endif
+
 	// Break input data into chunks
 	if((res = disassembleSignal(sigparts, *infile)) < 0) {
 		return res;
 	}
+
+#if DBG == 1
+	printf("decode()>> Disassembly complete.\n");
+#endif
 
 	// Copy message to output
 	*outfile = sigparts[5];
@@ -666,7 +749,11 @@ int decode(struct datastring *infile,
 		free(sigparts[i].data);
 	}
 	free(sigparts);
-	free(infile->data);
+	//free(infile->data);
+
+#if DBG == 1
+	printf("decode()>> Cleanup complete.\n");
+#endif
 
 	return 0;
 } // Decode

@@ -14,4 +14,7 @@ debug: frontend.c encryption.c
 	gcc -Wall -o shannon frontend.c encryption.c
 
 clean:
-	rm -rf shannon ignal noise inbox output
+	rm -rf shannon signal noise inbox output
+
+clean-l:
+	rm shannon

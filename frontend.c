@@ -1,7 +1,7 @@
 /*******
  * Shannon; Frontend
  * Becquerel Jones
- * December 30, 2019
+ * January 31, 2020
  * Debian 10: Buster
  * Vim
 *****/
@@ -17,6 +17,9 @@
 #include <errno.h>
 #include "encryption.h"
 #include "frontend.h"
+
+#define DBG 1
+
 
 // Main menu
 int mainMenu(int argc, char **argv) {
@@ -92,6 +95,10 @@ int encMenu() {
 		return -2;
 	}
 
+#if DBG == 1
+	printf("encMenu()>> Initialization complete.\n");
+#endif
+
 	// Select signal file
 	printf("Signal File:\n");
 	if((res = fileBrowse(SIGNADIR, &(files[0]), &(filesizes[0]), fname))) {
@@ -103,6 +110,10 @@ int encMenu() {
 	if((res = fileBrowse(NOISEDIR, &(files[1]), &(filesizes[1]), fname))) {
 		return res;
 	}
+
+#if DBG == 1
+	printf("encMenu()>> Files selected.\n");
+#endif
 
 	// Allocate space for signal file
 	infiles[0].size = filesizes[0];
@@ -122,20 +133,38 @@ int encMenu() {
 	fread(infiles[0].data, 1, infiles[0].size, files[0]);
 	fread(infiles[1].data, 1, infiles[1].size, files[1]);
 
+#if DBG == 1
+	printf("encMenu()>> Files loaded.\n");
+	printf("Signal:\n%s", infiles[0].data);
+#endif
+
 	// Hide signal file in noise file
 	// encode() frees infile data
 	if((res = encode(infiles, &outfile))) {
 		return res;
 	}
 
+#if DBG == 1
+	printf("encMenu()>> Encoding complete.\n");
+#endif
+
 	// Export result
 	if((res = constructPath(OUTBODIR, path))) {
 		return res;
 	}
 	strcat(path, fname);
+
+#if DBG == 1
+	printf("encMenu()>> Path constructed.\n");
+#endif
+
 	if((res = exportFile(path, outfile))) {
 		return res;
 	}
+
+#if DBG == 1
+	printf("encMenu()>> File exported.\n");
+#endif
 
 	// Cleanup
 	fclose(files[0]);
@@ -144,6 +173,10 @@ int encMenu() {
 	free(infiles);
 	free(files);
 	free(filesizes);
+
+#if DBG == 1
+	printf("encMenu()>> Cleanup complete.\n");
+#endif
 	
 	return 0;
 }
