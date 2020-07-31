@@ -7,11 +7,11 @@
 #####
 
 build: frontend.c encryption.c
-	gcc -o shannon frontend.c encryption.c
+	clang -o shannon frontend.c encryption.c
 	mkdir -p signal noise inbox output
 
 debug: frontend.c encryption.c
-	gcc -Wall -o shannon frontend.c encryption.c
+	clang -Wall -o shannon frontend.c encryption.c
 
 clean:
 	rm -rf shannon signal noise inbox output
